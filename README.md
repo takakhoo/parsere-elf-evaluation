@@ -108,15 +108,6 @@ Three minimal edits, all upstreamable as a single PR:
 
 The diff is small. Happy to send a PR against `kenballus/parsere` whenever you're ready.
 
-## Repo guidelines
-
-A few hard rules I'm following throughout:
-
-- **No em-dashes** anywhere (papers, READMEs, commits). The standard LLM tell.
-- **No "X is Y, not Z"** sentence structures. Another LLM tell. Use periods or "rather than" instead.
-- **Commits are Taka-only.** No Claude co-author trailers, ever.
-- **Real artifacts only.** Every number in the paper comes from an actual run on my machine. The corpus files, the SVGs, the addr2line resolutions, all reproducible.
-
 ## Useful links
 
 - Your upstream: [github.com/kenballus/parsere](https://github.com/kenballus/parsere)
