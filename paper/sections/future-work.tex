@@ -1,0 +1,41 @@
+\section{Future Work}\label{sec:future}
+
+\textbf{Additional architectures.}
+\toolname currently targets x86-64 binaries.
+\QEMU supports many additional architectures (ARM, MIPS, RISC-V, PowerPC), and the only architecture-dependent component is the trace-log parser.
+Extending to other architectures requires adapting the regular expression that extracts basic-block boundaries from \QEMU's log output.
+
+\textbf{Differential fuzzing guided by labels.}
+Once \toolname has labeled a parser's CFG, the labels provide a natural coverage metric for format-aware fuzzing.
+A fuzzer could prioritize inputs that exercise under-explored grammar productions, using \toolname's labels as a coverage map.
+
+\textbf{Grammar mining integration.}
+As discussed in Section~\ref{sec:rel:grammar}, grammar-recovery tools and \toolname solve complementary problems.
+An integrated pipeline could first recover an approximate grammar from a binary, then use \toolname to validate and refine the mapping, closing the loop between ``what does this binary eat?'' and ``where does it eat it?''
+
+\textbf{Hierarchical labeling.}
+The current template system supports one level of production-to-label mapping.
+Extending to hierarchical templates (labeling not just ``string'' but ``string-escape-sequence'' versus ``string-literal-characters'') would increase the granularity of the output without algorithmic changes.
+
+\section{Ethical Considerations}\label{sec:ethics}
+
+\toolname is a defensive reverse-engineering tool that annotates binary code with format-semantic labels.
+It does not discover, create, or exploit vulnerabilities.
+All target parsers used in our evaluation are open-source software analyzed with the knowledge and consent of the authors.
+No proprietary or classified binaries were analyzed.
+
+\section{LLM Usage Statement}\label{sec:llm}
+
+Large language models were used for editorial purposes in preparing this manuscript.
+All outputs were inspected by the authors to ensure accuracy and originality.
+No LLM was used in the design, implementation, or evaluation of \toolname itself.
+
+\section{Conclusion}\label{sec:conclusion}
+
+We presented \toolname, a technique for transferring known input-format labels onto the control-flow graph of an unknown binary.
+By systematically generating structurally varied inputs, tracing them under \QEMU, and attributing control-flow deltas to parse-tree deltas, \toolname produces a semantically meaningful map of parser code without requiring source code, compiler instrumentation, or data-flow analysis.
+
+We evaluated \toolname on four formats spanning the language hierarchy (URI, JSON, HPACK, and ELF), demonstrating high accuracy through exhaustive manual inspection of every label.
+\toolname is fast, lightweight, and integrates directly into existing reverse-engineering workflows.
+
+\textit{[BEN: final accuracy summary sentence pending. Once Rishav's labels and your HPACK numbers are in, we can say something like ``Across all four formats, \toolname achieves an average accuracy of X\%, with trace-collection times under Y seconds per format.'']}

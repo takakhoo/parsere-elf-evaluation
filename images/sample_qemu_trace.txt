@@ -1,0 +1,42 @@
+exit=0
+=== Trace excerpt (first 40 lines) ===
+----------------
+IN: _start
+0x004014f0:  31 ed                    xorl     %ebp, %ebp
+0x004014f2:  49 89 d1                 movq     %rdx, %r9
+0x004014f5:  5e                       popq     %rsi
+0x004014f6:  48 89 e2                 movq     %rsp, %rdx
+0x004014f9:  48 83 e4 f0              andq     $0xfffffffffffffff0, %rsp
+0x004014fd:  50                       pushq    %rax
+0x004014fe:  54                       pushq    %rsp
+0x004014ff:  45 31 c0                 xorl     %r8d, %r8d
+0x00401502:  31 c9                    xorl     %ecx, %ecx
+0x00401504:  48 c7 c7 14 18 40 00     movq     $0x401814, %rdi
+0x0040150b:  67 e8 ff 77 01 00        callq    0x418d10
+
+----------------
+IN: __libc_start_main
+0x00418d10:  41 57                    pushq    %r15
+0x00418d12:  48 63 c6                 movslq   %esi, %rax
+0x00418d15:  41 56                    pushq    %r14
+0x00418d17:  49 89 c7                 movq     %rax, %r15
+0x00418d1a:  41 55                    pushq    %r13
+0x00418d1c:  41 54                    pushq    %r12
+0x00418d1e:  49 89 d4                 movq     %rdx, %r12
+0x00418d21:  55                       pushq    %rbp
+0x00418d22:  53                       pushq    %rbx
+0x00418d23:  48 81 ec c8 00 00 00     subq     $0xc8, %rsp
+0x00418d2a:  48 89 7c 24 48           movq     %rdi, 0x48(%rsp)
+0x00418d2f:  48 8d 7c c2 08           leaq     8(%rdx, %rax, 8), %rdi
+0x00418d34:  48 8b 84 24 00 01 00 00  movq     0x100(%rsp), %rax
+0x00418d3c:  4c 89 4c 24 50           movq     %r9, 0x50(%rsp)
+0x00418d41:  48 89 3d 18 04 1b 00     movq     %rdi, 0x1b0418(%rip)
+0x00418d48:  48 89 05 41 8c 0a 00     movq     %rax, 0xa8c41(%rip)
+0x00418d4f:  90                       nop      
+0x00418d50:  48 83 c7 08              addq     $8, %rdi
+0x00418d54:  48 83 7f f8 00           cmpq     $0, -8(%rdi)
+0x00418d59:  75 f5                    jne      0x418d50
+
+----------------
+IN: __libc_start_main
+0x00418d50:  48 83 c7 08              addq     $8, %rdi

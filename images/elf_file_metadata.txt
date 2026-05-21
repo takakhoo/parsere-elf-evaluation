@@ -1,0 +1,8 @@
+full.elf:        ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, not stripped
+no_strtab.elf:   ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, not stripped
+no_sym_str.elf:  ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, stripped
+no_symtab.elf:   ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, stripped
+no_text.elf:     ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, not stripped
+phdr_dyn.elf:    ELF 64-bit LSB executable, x86-64, version 1 (SYSV), dynamically linked, not stripped
+phdr_interp.elf: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, interpreter ллллллллллллллл, not stripped
+phdr_null.elf:   ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, not stripped

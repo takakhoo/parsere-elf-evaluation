@@ -1,0 +1,83 @@
+\documentclass[conference,compsoc]{IEEEtran}
+% ACSAC 2026 requires compsoc option. Anonymous submission handled
+% by omitting author names (not the IEEEtran anonymous flag).
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{xspace}
+\usepackage{hyperref}
+\usepackage{tikz}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{balance}
+\usetikzlibrary{positioning}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{arrows.meta}
+
+\newcommand{\toolname}{ParseRE\xspace}
+\newcommand{\QEMU}{\textsc{QEMU}\xspace}
+
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  breaklines=true,
+  columns=flexible,
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{green!50!black},
+  stringstyle=\color{red!70!black},
+}
+
+\begin{document}
+
+\title{Recovering Semantics from Unknown Binaries\\with Known Input Formats}
+
+\author{
+\IEEEauthorblockN{Anonymous}
+\IEEEauthorblockA{Anonymous Institution}
+}
+
+\maketitle
+
+\begin{abstract}
+Annotating basic blocks of an unknown binary with semantic labels is useful for reverse engineering, and much of that semantic information can be derived from the inputs the basic blocks process.
+We present a technique for annotating binary implementations of known input formats with labels that reflect the input grammar.
+The technique transfers annotations from inputs to programs by discovering execution trace differences and interpreting them in the context of the input annotations.
+The analysis runs in time comparable to the initial analysis pass of reverse engineering tools such as Ghidra, and reveals the structure of complex parser code in a fraction of the time required by manual inspection.
+Prior approaches to similar problems require instrumentation of the target program or dataflow analysis.
+Our technique requires only basic-block traces from the target along with a corpus of annotated inputs.
+
+We evaluate the accuracy of \toolname on parsers for four data formats spanning the language hierarchy: URI (regular), JSON (context-free), HPACK (context-sensitive binary), and ELF (offset-driven binary).
+On the completed ELF evaluation, manual inspection of every label yields a strict accuracy of 91.2\%.
+\textit{[BEN: URI and JSON accuracy rates pending Rishav's labeled SVG handoff. HPACK numbers pending your evaluation.]}
+\end{abstract}
+
+\begin{IEEEkeywords}
+reverse engineering, binary analysis, control-flow graphs, parser analysis, input format recovery, QEMU
+\end{IEEEkeywords}
+
+% ============================================================
+\input{sections/introduction}
+\input{sections/background}
+\input{sections/design}
+\input{sections/implementation}
+\input{sections/evaluation}
+\input{sections/related-work}
+\input{sections/future-work}
+% ============================================================
+
+\section*{Acknowledgment}
+% TODO: Acknowledge Rishav's manual labeling work, Sergey's advising,
+% and any funding sources (Dartmouth CS, etc.)
+
+\balance
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

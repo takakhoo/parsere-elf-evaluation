@@ -1,0 +1,54 @@
+\section{Implementation}\label{sec:implementation}
+
+\toolname is implemented as a single Python module with minimal external dependencies and parallelized across available CPU cores using a thread pool.
+The tool requires Python and \QEMU user-mode emulation; the analyst supplies the target binary and a grammar template for the input format.
+
+\subsection{Corpus Generation}\label{sec:impl:corpus}
+
+Grammar templates are written as nested tree structures.
+Each template node has a name (the grammar production) and a set of alternatives, which are either concrete byte sequences at leaf nodes or sets of child configurations at internal nodes.
+\toolname recursively enumerates every combination of alternatives via Cartesian product, producing a set of concrete parse trees that can be serialized to byte strings.
+
+For JSON, the template covers seven productions: object, string, number, boolean, null, nan, inf, and array, with multiple byte-level alternatives for each.
+For URI, it covers scheme, authority (with optional userinfo, host, and port), path, query, and fragment.
+Adding a new format requires only defining a new template and a corresponding harness binary; no changes to the core pipeline are needed.
+
+The number of instantiations a template produces depends on its branching factor.
+The JSON template yields 27 instantiations (729 pairwise comparisons), the URI template yields 1{,}458 instantiations (over two million pairwise comparisons), and the ELF template yields 20 instantiations (380 pairwise comparisons).
+Each input is small (under one kilobyte for the text formats; exactly 1048 bytes for ELF), which keeps trace collection practical even for large corpora.
+
+\subsection{Tracing with QEMU}\label{sec:impl:qemu}
+
+Each input is fed to the target binary via standard input.
+\toolname invokes \QEMU in user mode with logging enabled and a per-input output file.
+The target is a small harness that reads from standard input, calls the parser library under test, and exits with a status code indicating parse success or failure.
+
+After execution, \toolname parses the trace file with a regular expression that extracts basic-block boundaries from the \QEMU log.
+Each record contains the block's start address and the addresses of its first and last instructions, from which the tool constructs a record for the basic block.
+Only blocks within the target binary's executable segment are retained; blocks from the dynamic linker and the \QEMU runtime are discarded.
+
+Traces for inputs that the parser rejects (non-zero exit status) are excluded from subsequent analysis.
+This ensures the CFG is built from successful parses, where the parser exercises its full grammar-handling logic.
+
+\textit{[BEN: the trace-log regex is version-dependent. Worth confirming it is robust across the QEMU versions we expect reviewers to use, or pinning the version in the artifact description.]}
+
+\subsection{Target Harnesses}\label{sec:impl:harness}
+
+For each parser under test, we compile a small C harness that links against the parser library, reads input from standard input, invokes the top-level parse function, and returns the result.
+Harnesses are typically under thirty lines of C, with the exception of the ELF harness, which walks the program header table, section header table, and symbol table explicitly to ensure each structure is exercised.
+
+Harnesses are compiled inside Docker containers for reproducibility, and parser libraries are linked statically to keep dynamic-linker code out of the traces.
+We compile at low optimization with inlining disabled (\texttt{-O0 -fno-inline}) so the compiler does not collapse distinct parser functions into inlined code, which would destroy the correspondence between grammar productions and basic-block ranges.
+For evaluation purposes, harnesses also include debug information so that addresses can be resolved back to source lines via \texttt{addr2line}; this is helpful for manual verification but unnecessary for the core analysis.
+
+\subsection{Supported Formats}\label{sec:impl:formats}
+
+The current implementation includes grammar templates for four formats:
+
+\begin{itemize}
+    \item \textbf{URI} (regular): scheme, authority (userinfo, host, port), path, query, fragment, per RFC~3986.
+    \item \textbf{JSON} (context-free): objects, arrays, strings, numbers, booleans, null, per RFC~8259.
+    \item \textbf{HPACK} (context-sensitive binary): indexed headers, literal headers with and without Huffman compression, per RFC~7541.
+    \textit{[BEN: fill in your HPACK template description when ready.]}
+    \item \textbf{ELF} (offset-driven binary): a fixed ELF header, four program header variants that change the second segment type, and five section variants that change which sections are populated. Each instantiation is a valid 1048-byte ELF64 file produced by a generator script.
+\end{itemize}

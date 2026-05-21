@@ -1,0 +1,162 @@
+% ================================================================
+% ParseRE references.bib
+% Only entries actually cited in the paper.
+% Cleaned and curated from the original NDSS-era bib.
+% ================================================================
+
+% --- Core tools and infrastructure ---
+
+@inproceedings{bellard2005qemu,
+  author    = {Bellard, Fabrice},
+  title     = {{QEMU}, a Fast and Portable Dynamic Translator},
+  booktitle = {Proceedings of the 2005 {USENIX} Annual Technical Conference, FREENIX Track},
+  year      = {2005},
+  pages     = {41--46},
+  address   = {Anaheim, CA},
+  publisher = {USENIX Association}
+}
+
+@misc{nsa2019ghidra,
+  author       = {{National Security Agency}},
+  title        = {Ghidra: A Software Reverse Engineering Framework},
+  year         = {2019},
+  howpublished = {\url{https://ghidra-sre.org}},
+  note         = {Open-sourced at RSA Conference, March 2019}
+}
+
+% --- Trace-diffing tools (Section V-A) ---
+
+@misc{gaasedelen2021tenet,
+  author       = {Gaasedelen, Markus},
+  title        = {Tenet: A Trace Explorer for Reverse Engineers},
+  year         = {2021},
+  howpublished = {\url{https://github.com/gaasedelen/tenet}},
+  note         = {{IDA Pro} plugin; 1st place, Hex-Rays Plugin Contest 2021}
+}
+
+@misc{gaasedelen2017lighthouse,
+  author       = {Gaasedelen, Markus},
+  title        = {Lighthouse: A Code Coverage Explorer for Reverse Engineers},
+  year         = {2017},
+  howpublished = {\url{https://github.com/gaasedelen/lighthouse}},
+  note         = {{IDA Pro} / {Binary Ninja} plugin; 2nd place, Hex-Rays Plugin Contest 2017}
+}
+
+% --- Input-region categorization / DIFT (Section V-B) ---
+
+@misc{sultanik2019polyfile,
+  author       = {Sultanik, Evan},
+  title        = {{PolyFile}: A Polyglot-Aware File Identification and Mapping Utility},
+  year         = {2019},
+  howpublished = {\url{https://github.com/trailofbits/polyfile}},
+  note         = {Trail of Bits; funded by DARPA SafeDocs}
+}
+
+@inproceedings{sultanik2024polytracker,
+  title        = {{PolyTracker}: Whole-Input Dynamic Information Flow Tracing},
+  author       = {Sultanik, Evan and Surovi{\v{c}}, Marek and Brodin, Henrik and Kaoudis, Kelly and Tuesca, Facundo and Harmon, Carson and Overall, Lisa and Sweeney, Joseph and Larsen, Bradford},
+  booktitle    = {Proceedings of the 33rd ACM SIGSOFT International Symposium on Software Testing and Analysis},
+  pages        = {1841--1845},
+  year         = {2024}
+}
+
+% --- Grammar mining / format recovery (Section V-C) ---
+
+@inproceedings{cui2008tupni,
+  author    = {Cui, Weidong and Peinado, Marcus and Chen, Karl and Wang, Helen J. and Irun-Briz, Luis},
+  title     = {Tupni: Automatic Reverse Engineering of Input Formats},
+  year      = {2008},
+  publisher = {Association for Computing Machinery},
+  booktitle = {Proceedings of the 15th ACM Conference on Computer and Communications Security},
+  pages     = {391--402},
+  series    = {CCS '08}
+}
+
+@inproceedings{caballero2007polyglot,
+  title     = {Polyglot: Automatic Extraction of Protocol Message Format Using Dynamic Binary Analysis},
+  author    = {Caballero, Juan and Yin, Heng and Liang, Zhenkai and Song, Dawn},
+  booktitle = {Proceedings of the 14th ACM Conference on Computer and Communications Security},
+  pages     = {317--329},
+  year      = {2007}
+}
+
+@inproceedings{hoschele2016autogram,
+  author    = {H{\"o}schele, Matthias and Zeller, Andreas},
+  title     = {Mining Input Grammars from Dynamic Taints},
+  booktitle = {Proceedings of the 31st IEEE/ACM International Conference on Automated Software Engineering (ASE)},
+  pages     = {720--725},
+  year      = {2016},
+  doi       = {10.1145/2970276.2970321}
+}
+
+@inproceedings{gopinath2020mining,
+  title     = {Mining Input Grammars from Dynamic Control Flow},
+  author    = {Gopinath, Rahul and Mathis, Bj{\"o}rn and Zeller, Andreas},
+  booktitle = {Proceedings of the 28th ACM Joint Meeting on European Software Engineering Conference and Symposium on the Foundations of Software Engineering},
+  pages     = {172--183},
+  year      = {2020}
+}
+
+@inproceedings{comparetti2009prospex,
+  author    = {Comparetti, Paolo Milani and Wondracek, Gilbert and Kruegel, Christopher and Kirda, Engin},
+  title     = {Prospex: Protocol Specification Extraction},
+  booktitle = {Proceedings of the 30th IEEE Symposium on Security and Privacy (S\&P)},
+  pages     = {110--125},
+  year      = {2009},
+  publisher = {IEEE}
+}
+
+% --- Differential testing for parsers (Section V-D) ---
+
+@inproceedings{http-smuggling,
+  author    = {Jabiyev, Bahruz and Sprecher, Steven and Onarlioglu, Kaan and Kirda, Engin},
+  title     = {{T-Reqs}: {HTTP} Request Smuggling with Differential Fuzzing},
+  year      = {2021},
+  publisher = {Association for Computing Machinery},
+  booktitle = {Proceedings of the 2021 ACM SIGSAC Conference on Computer and Communications Security},
+  pages     = {1805--1820},
+  series    = {CCS '21}
+}
+
+@article{zheng2024pardiff,
+  title     = {{ParDiff}: Practical Static Differential Analysis of Network Protocol Parsers},
+  author    = {Zheng, Mingwei and Shi, Qingkai and Liu, Xuwei and Xu, Xiangzhe and Yu, Le and Liu, Congyu and Wei, Guannan and Zhang, Xiangyu},
+  journal   = {Proceedings of the ACM on Programming Languages},
+  volume    = {8},
+  number    = {OOPSLA1},
+  pages     = {1208--1234},
+  year      = {2024},
+  publisher = {ACM}
+}
+
+% --- Background references ---
+
+@inproceedings{shoshitaishvili2016sok,
+  title        = {{SoK}: (State of) The Art of War: Offensive Techniques in Binary Analysis},
+  author       = {Shoshitaishvili, Yan and Wang, Ruoyu and Salls, Christopher and Stephens, Nick and Polino, Mario and Dutcher, Andrew and Grosen, John and Feng, Siji and Hauser, Christophe and Kruegel, Christopher and others},
+  booktitle    = {2016 IEEE Symposium on Security and Privacy (SP)},
+  pages        = {138--157},
+  year         = {2016},
+  organization = {IEEE}
+}
+
+@article{chomsky1956three,
+  title     = {Three Models for the Description of Language},
+  author    = {Chomsky, Noam},
+  journal   = {IRE Transactions on Information Theory},
+  volume    = {2},
+  number    = {3},
+  pages     = {113--124},
+  year      = {1956},
+  publisher = {IEEE}
+}
+
+% --- RFCs (cited in implementation/evaluation) ---
+
+@misc{rfc7541,
+  author       = {Peon, Roberto and Ruellan, Herve},
+  title        = {{HPACK}: Header Compression for {HTTP/2}},
+  howpublished = {RFC 7541},
+  year         = {2015},
+  publisher    = {IETF}
+}

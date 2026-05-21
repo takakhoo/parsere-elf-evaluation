@@ -1,0 +1,21 @@
+.DS_Store
+__pycache__/
+*.pyc
+
+# LaTeX intermediates
+paper/main.aux
+paper/main.bbl
+paper/main.blg
+paper/main.log
+paper/main.out
+paper/main.toc
+paper/main.synctex.gz
+*.synctex.gz
+
+# Docker build output (we keep the Dockerfile but not the cache)
+docker/*.log
+
+# Local scratch
+scratch/
+tmp/
+*.swp

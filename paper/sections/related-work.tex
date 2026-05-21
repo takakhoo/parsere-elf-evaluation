@@ -1,0 +1,58 @@
+\section{Related Work}\label{sec:rel}
+
+\toolname occupies a specific niche in the binary analysis landscape: it transfers \textit{known} input-format labels onto a binary's basic blocks using only control-flow traces.
+We position it against three lines of prior work that are easily confused with each other but solve materially different problems.
+
+\subsection{Trace-Diffing Tools}\label{sec:rel:tenet}
+
+Tenet~\cite{gaasedelen2021tenet} and Lighthouse~\cite{gaasedelen2017lighthouse} are disassembler plugins that highlight the basic blocks differing between execution traces of the same binary inside IDA~Pro or Binary~Ninja.
+They are widely used in practice for tasks like identifying why one input crashes while another does not.
+
+These tools solve a degenerate case of \toolname's problem: $N{=}2$ inputs, no input-side annotations.
+\toolname generalizes the differential approach in two ways.
+First, we systematically generate large corpora of structurally related inputs from a grammar template (Section~\ref{sec:design:corpus}) rather than asking the user to supply two interesting inputs by hand.
+Second, we attach semantic labels to the input structure and propagate those labels to CFG edges, which produces a format-aware annotation rather than a binary ``differs / does not differ'' verdict.
+
+\subsection{Input-Region Categorization}\label{sec:rel:polyfile}
+
+PolyFile~\cite{sultanik2019polyfile} from Trail of Bits identifies which byte ranges of a file belong to which substructure of a known file format.
+PolyTracker~\cite{sultanik2024polytracker} extends this with whole-input dynamic information flow tracking, using LLVM instrumentation to build a directed acyclic graph that maps each input byte through the program's execution.
+
+\toolname and these tools both operate on inputs whose formats are known, but they differ in what they annotate.
+PolyFile produces an annotation of the \textit{input}.
+PolyTracker produces a data-flow mapping between input bytes and program operations.
+\toolname produces an annotation of the binary's control-flow graph itself.
+The three tools are therefore composable: PolyFile can produce the labeled corpus that \toolname consumes, and \toolname's output can be cross-referenced with PolyTracker's data-flow graph for deeper understanding.
+
+A methodological distinction separates \toolname from PolyTracker: PolyTracker requires LLVM-level compiler instrumentation of the target program, which restricts it to scenarios in which source code is available.
+\toolname requires only \QEMU user-mode emulation, which is available for any binary the analyst can run.
+That covers the reverse-engineering scenario in which source is unavailable.
+
+\subsection{Grammar Mining and Format Recovery}\label{sec:rel:grammar}
+
+A substantial body of academic work addresses the inverse problem: given only a binary, recover the grammar of the inputs it accepts.
+Tupni~\cite{cui2008tupni} performs automatic reverse engineering of input formats using dynamic analysis.
+Polyglot~\cite{caballero2007polyglot} extracts protocol message formats via dynamic binary analysis.
+AUTOGRAM~\cite{hoschele2016autogram} infers grammars from observed input-output behavior using dynamic taint analysis.
+More recent work by Gopinath et~al.~\cite{gopinath2020mining} mines context-free input grammars from dynamic control flow.
+Prospex~\cite{comparetti2009prospex} recovers protocol state machines from network traces.
+
+These approaches answer the question \textit{``what does this binary eat?''}
+\toolname answers a different question: \textit{``given that this binary eats X, where in the code is X handled?''}
+The two problems are sequential rather than competing.
+An analyst would use a grammar-recovery tool to obtain a starting grammar, then use \toolname to map that grammar onto the code.
+Conflating the two would be a category error.
+
+A second methodological distinction is fundamental.
+Most grammar-recovery approaches require some form of program instrumentation, whether compiler-level for data-flow tracing~\cite{sultanik2024polytracker} or source-level for taint propagation~\cite{hoschele2016autogram}.
+That restricts them to scenarios in which source is available, which defeats the central reverse-engineering use case where the analyst typically has only a binary.
+\toolname requires only \QEMU-traceable control flow, which is available for any binary.
+
+\subsection{Differential Testing for Parsers}\label{sec:rel:difftesting}
+
+The broader idea of detecting parser bugs through differential observation has been explored in the HTTP/1.1 ecosystem~\cite{http-smuggling} and in static differential analysis of protocol parsers~\cite{zheng2024pardiff}.
+These tools surface discrepancies in protocol semantics between parser implementations.
+\toolname surfaces the structural correspondence between an agreed input grammar and the code that realizes it.
+They are complementary: a differential-testing tool can find that two parsers disagree, then \toolname can localize where in each parser the disagreement lives.
+
+\textit{[BEN: confirm whether the HTTP Garden citation should be included in the camera-ready (and excluded from the anonymous submission to avoid identity leakage). Currently we cite T-Reqs and ParDiff instead.]}

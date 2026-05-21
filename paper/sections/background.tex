@@ -1,0 +1,32 @@
+\section{Background}\label{sec:background}
+
+\subsection{Control-Flow Graphs}\label{sec:bg:cfg}
+
+Reverse engineering is the process of analyzing a binary to understand its structure, functionality, and behavior without access to source code.
+A fundamental program representation in this domain is the \textbf{control-flow graph (CFG)}.
+Each node in a CFG corresponds to a \textbf{basic block}: a maximal sequence of consecutive instructions with a single entry point and a single exit point~\cite{shoshitaishvili2016sok}.
+If execution reaches the first instruction of a basic block, it will execute every instruction in that block before transferring control elsewhere.
+Edges in a CFG represent transfers of control flow, including branches, function calls, and returns.
+
+Understanding how a program's input drives its execution path through the CFG is crucial to understanding the program's behavior.
+For a parser binary, different inputs exercise different paths, and the structural differences between inputs correspond to structural differences in the paths taken through the parser code.
+
+\subsection{Execution Tracing with QEMU}\label{sec:bg:qemu}
+
+\QEMU~\cite{bellard2005qemu} is an open-source emulator that supports both full-system and user-mode emulation across many architectures.
+In user-mode emulation, \QEMU executes a single Linux binary by translating its instructions and forwarding system calls to the host kernel.
+
+A useful feature for binary analysis is \QEMU's logging facility, which records every basic block the emulator translates along with the block's start address and the disassembly of its first and last instructions.
+This produces a complete, ordered basic-block trace of one program execution without any modification to the target binary.
+
+This capability is central to our approach.
+We trace the target under \QEMU for many inputs and compare the resulting traces to infer which code regions correspond to which input features.
+
+\subsection{Parse Trees and Input Annotations}\label{sec:bg:parsetrees}
+
+A \textbf{parse tree} represents the syntactic structure of an input according to a grammar.
+Internal nodes correspond to grammar productions; leaves hold the concrete bytes.
+
+We use parse trees to annotate inputs: each subtree is labeled with the grammar production it instantiates.
+When two inputs share the same tree structure except at one subtree, the difference in their execution traces can be attributed to the differing production.
+This is the core insight behind \toolname.
