@@ -1,32 +1,40 @@
-# HPACK Evaluation (Placeholder)
+# evaluations/hpack/
 
-This is Ben's evaluation, not Taka's. The folder exists so the cross-format comparison in the paper has a place to point to.
+Ben,
 
-## What HPACK is
+This folder is a placeholder for your HPACK evaluation. The cross-format table in the paper points here.
 
-HPACK is the header compression format for HTTP/2, defined in RFC 7541. It encodes header fields as variable-length integers and optionally Huffman-compressed strings, with a dynamic table for previously-sent headers. It is fully binary, uses context-sensitive encoding (integer bit widths depend on the header type byte), and involves a fixed Huffman table baked into the specification.
+## What HPACK is (for context)
 
-For ParseRE this is a stress test: it has the offset-driven structural properties of ELF but with much more conditional encoding logic than ELF's mostly-uniform record readers.
+HPACK is the header compression format for HTTP/2, defined in RFC 7541. Variable-length integers, optionally Huffman-compressed strings, dynamic table for previously-sent headers. Fully binary, context-sensitive encoding (integer bit widths depend on the header type byte), fixed Huffman table baked into the specification.
+
+For ParseRE this should be a stress test: offset-driven binary like ELF, but with much more conditional encoding logic.
 
 ## Expected target
 
-`libnghttp2`, specifically the HPACK decoder. Entry point would be something like `nghttp2_hd_inflate_hd`.
+`libnghttp2`, specifically the HPACK decoder. Entry point would be `nghttp2_hd_inflate_hd` or similar.
 
-## Expected grammar productions
+## Expected productions
 
-- `indexed_header`: a single byte referencing the static or dynamic table
+- `indexed_header`: one byte referencing the static or dynamic table
 - `literal_header_name_index`: indexed name plus literal value
 - `literal_header_both_strings`: both name and value as literals
-- `huffman_string`: a Huffman-compressed string
-- `raw_string`: a non-compressed string
-- `variable_length_int`: the integer encoding used throughout HPACK
+- `huffman_string`: Huffman-compressed string
+- `raw_string`: non-compressed string
+- `variable_length_int`: the integer encoding used throughout
 
-## Status
+## When you have results
 
-Not started. Ben said he was working on this during the May 19 session.
+Drop them into:
 
-Once Ben has results, drop the harness into `harnesses/`, the template into `parsere/main.py`, and the run output into `evaluations/hpack/output/`.
+- `evaluations/hpack/harness/hpack_harness.c` (or wherever you put the source)
+- `evaluations/hpack/output/parsere.out`, `out.dot`, `out.svg`
+- Add a `case "hpack":` in `parsere/main.py` switch
+- Add a row to `paper/sections/evaluation.tex` Table 3
+- I'll fill in the `\textit{[BEN:]}` markers in `paper/sections/evaluation.tex` Section IV-D
 
-## Note for Ben
+## A suggestion
 
-If you want to follow the pattern Taka used for ELF, look at how the ELF template is structured. It is byte-baked because the format has interdependent offsets. For HPACK the byte-level approach should be even easier because HPACK is a stream, not a layout-driven format. You can probably write the template directly in `main.py` without a Python corpus generator.
+For ELF I needed a Python generator because of the interdependent offsets. For HPACK you probably won't. HPACK is a stream rather than a layout-driven format, so you can write the byte alternatives directly into the `HPACK_PARSE_TREE_TEMPLATE` definition in `main.py`.
+
+Taka

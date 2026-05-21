@@ -42,7 +42,7 @@ def main():
 
     # Write the template file
     with open('elf_template.py', 'w') as f:
-        f.write('"""ELF_PARSE_TREE_TEMPLATE for ParseRE — auto-generated."""\n\n')
+        f.write('"""ELF_PARSE_TREE_TEMPLATE for ParseRE (auto-generated)."""\n\n')
 
         # Write byte constants
         f.write(f'_EHDR = {bytes_to_literal(ehdr)}\n\n')

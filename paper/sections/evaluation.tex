@@ -1,34 +1,35 @@
 \section{Evaluation}\label{sec:evaluation}
 
-We evaluate \toolname on four input formats to assess both the generality of the technique and the accuracy of the labels it produces.
-For each format, we run \toolname against one or more real-world parser implementations, then manually inspect every labeled basic block to determine whether the label is correct.
+We evaluate \toolname on four input formats with at least one open-source parser implementation each.
+For every format-parser pair, we manually inspect every labeled basic block to determine whether the label is correct.
 
-\subsection{Methodology}
+\textbf{Research questions.}
+\begin{itemize}
+    \item[\textbf{(Q1)}] How many basic blocks does \toolname label, and what fraction of the parser CFG do those labels cover?
+    \item[\textbf{(Q2)}] How accurate are the labels at the per-block level?
+    \item[\textbf{(Q3)}] Does the labeling behave consistently across language classes (regular, context-free, context-sensitive binary, offset-driven binary)?
+\end{itemize}
 
-For each format-parser pair, we:
-\begin{enumerate}
-    \item Compile a minimal harness linking against the parser library, inside a Docker container, with debug symbols enabled.
-    \item Run \toolname with the corresponding grammar template under \QEMU user-mode emulation.
-    \item Manually inspect the output: for every labeled edge and node, a human evaluator checks whether the source-code location (obtained via \texttt{addr2line}) implements the grammar production indicated by the label.
-    \item Record true positives (correct labels), false positives (incorrect labels), and false negatives (unlabeled blocks that should have been labeled).
-\end{enumerate}
+\subsection{Methodology}\label{sec:eval:method}
 
-This evaluation is labor intensive but avoids the pitfalls of automated evaluation.
-A previous iteration of this work used a large language model for label verification and achieved roughly 50\% accuracy, which is insufficient for a credible evaluation.
-All results reported here are from manual human inspection.
+For each format-parser pair, we (1)~compile a minimal harness against the parser library inside a Docker container with debug symbols, (2)~run \toolname with the corresponding grammar template under \QEMU user-mode, and (3)~manually inspect the output.
+For every labeled edge and node, a human evaluator checks whether the source location (recovered via \texttt{addr2line}) implements the grammar production indicated by the label, and records true positives, false positives, and false negatives.
+
+\textbf{Why manual inspection.}
+A previous iteration of this work used a large language model for label verification and achieved roughly 50\% accuracy.
+We treat that as a baseline for what an automated verifier can do without semantic grounding in the target binary, and we use manual inspection instead.
+The numbers reported below are all from human evaluators reading the labeled SVG output and the disassembly of each labeled block.
 
 \subsection{URI Parsers}\label{sec:eval:url}
 
-We evaluate on two URI parsers:
-\begin{itemize}
-    \item \textbf{Curl} (\texttt{curl\_url\_set}): the URL parser used by the Curl HTTP client, one of the most widely deployed URL parsers in existence.
-    \item \textbf{Apache APR} (\texttt{apr\_uri\_parse}): the URI parser in the Apache Portable Runtime, used by the Apache HTTP Server.
-\end{itemize}
+We evaluate on two URI parsers: Curl's \texttt{curl\_url\_set} and Apache Portable Runtime's \texttt{apr\_uri\_parse}.
+The URI template instantiates 1{,}458 inputs and produces 2{,}125{,}764 pairwise comparisons.
 
-The URI grammar template instantiates 1{,}458 distinct inputs varying across scheme, authority components (userinfo, host type, port), path segments, query, and fragment, which yields 2{,}125{,}764 pairwise comparisons.
-
-On Curl's \texttt{curl\_url\_set}, \toolname produces a labeled CFG with 522 nodes and 558 edges, of which 211 basic blocks receive labels across 11 URI grammar productions.
+\textbf{Curl.}
+On the static-linked Curl harness, \toolname produces a labeled CFG with 522 nodes and 558 edges, of which 211 basic blocks receive labels across 11 URI productions.
 Table~\ref{tab:url-labels} shows the distribution.
+Host validation dominates because Curl's parser performs extensive checks: IPv4 versus IPv6 detection, IDNA processing, bracket handling, and length validation.
+The duplicate-looking labels (\texttt{port} versus \texttt{:port}, \texttt{query} versus \texttt{?query}) come from the template's leaf naming: the colon or question mark delimiter is included in the label string. This is a template quirk; the underlying attribution is correct.
 
 \begin{table}[h]
 \caption{URI label distribution (Curl).}
@@ -50,18 +51,17 @@ path        & 1  \\
 \end{tabular}
 \end{table}
 
-\textit{[RISHAV: please drop in TP/FP/FN counts here once your labeled SVG handoff is ready. The 21 ambiguous blocks are shared code paths that \toolname could not uniquely attribute to a single production.]}
+\textit{[RISHAV: drop in TP/FP/FN counts here once your labeled SVG handoff is ready. The 21 ambiguous blocks are shared code paths \toolname could not uniquely attribute to a single production.]}
 
-\textit{[BEN: we also need APR results from Rishav (same template, different parser).]}
+\textbf{Apache APR.}
+\textit{[BEN: same URI template, different parser. Rishav was going to run this. Numbers pending.]}
 
 \subsection{JSON Parsers}\label{sec:eval:json}
 
-We evaluate on json-c, a widely used C library for JSON parsing (\texttt{json\_tokener\_parse}).
+We evaluate on json-c, a widely deployed C library for JSON parsing.
+The JSON template instantiates 27 inputs and produces 729 pairwise comparisons.
 
-The JSON grammar template covers objects (with key-value pairs), arrays, strings, numbers (integer, floating-point, negative, scientific notation), booleans, null, nan, and inf.
-It instantiates 27 distinct inputs and 729 pairwise comparisons.
-
-On json-c (commit \texttt{894856}), \toolname produces a labeled CFG with 464 nodes and 400 edges, of which 294 basic blocks receive labels across 6 JSON grammar productions.
+On json-c (commit \texttt{894856}), \toolname produces a labeled CFG with 464 nodes and 400 edges, of which 294 basic blocks receive labels across 6 productions.
 Table~\ref{tab:json-labels} shows the distribution.
 
 \begin{table}[h]
@@ -82,37 +82,50 @@ nan            & 9   \\
 \end{tabular}
 \end{table}
 
-The dominance of \texttt{number} reflects the complexity of C-level numeric parsing (sign handling, decimal point, exponent notation, overflow checks), which requires many basic blocks.
-By contrast, \texttt{nan} receives few labels because its parsing path is short: a simple three-character string comparison.
+\texttt{number} dominates because C-level numeric parsing is complex: sign handling, decimal point, exponent notation, overflow checks, and \texttt{strtod} wrappers each require their own basic blocks.
+\texttt{nan} receives few labels because the parsing path is a three-character string comparison.
 
-\textit{[RISHAV: TP/FP/FN counts for JSON also pending. Some of the labels will probably be shared error-handling blocks attributed to the wrong production.]}
+\textit{[RISHAV: JSON TP/FP/FN counts also pending. Expect some shared error-handling blocks attributed to the wrong production.]}
 
 \subsection{HPACK Decoder}\label{sec:eval:hpack}
 
-HPACK~\cite{rfc7541} is the header compression format used in HTTP/2.
-It encodes headers as variable-length integers and optionally Huffman-compressed strings, with a dynamic table for previously sent headers.
-This format presents a stress test for \toolname: it is fully binary (no human-readable text), uses context-sensitive encoding (integer bit-widths depend on the header type), and involves compression (a fixed Huffman table defined in the specification).
+HPACK is the header compression format for HTTP/2, defined in RFC~7541~\cite{rfc7541}.
+The format is fully binary, uses context-sensitive encoding, and includes a fixed Huffman table baked into the specification.
+This makes HPACK a stress test for \toolname: it has the offset-driven properties of ELF together with conditional encoding logic that text formats lack.
 
-\textit{[BEN: drop your HPACK evaluation results here. Target parser is nghttp2's HPACK decoder. Expected productions include indexed\_header, literal\_header\_name\_index, literal\_header\_both\_strings, huffman\_string, raw\_string, variable\_length\_int.]}
+\textit{[BEN: drop your HPACK results here when ready. Target is nghttp2's HPACK decoder. Expected productions: indexed\_header, literal\_header\_name\_index, literal\_header\_both\_strings, huffman\_string, raw\_string, variable\_length\_int.]}
 
 \subsection{ELF Parser}\label{sec:eval:elf}
 
-The Executable and Linkable Format (ELF) is the standard binary format on Linux and other Unix-like systems.
-Unlike the sequential text formats above, ELF is offset driven: the ELF header contains pointers to program header and section header tables, which in turn point to string tables, symbol tables, and other sections.
+ELF is the standard binary format on Linux and other Unix-like systems.
+Unlike the sequential text formats above, ELF is offset-driven: the ELF header contains pointers to program header and section header tables, which in turn point to string tables, symbol tables, and other sections.
 We target libelf from elfutils, the reference library used by Ghidra, radare2, and most binary analysis toolchains.
 
-The ELF grammar template has three children: a fixed ELF header (1~variant), program headers with 4~alternatives varying the second program header type (\texttt{PT\_NOTE}, \texttt{PT\_INTERP}, \texttt{PT\_DYNAMIC}, \texttt{PT\_NULL}), and section data with 5~alternatives that toggle the presence of symbol tables, string tables, and code sections.
-This yields $1 \times 4 \times 5 = 20$ instantiations and 380 pairwise comparisons.
-Each instantiation is a valid 1{,}048-byte ELF64 file with a fixed layout, generated by a script that constructs the headers, sections, and data in lockstep.
+\textbf{Corpus layout.}
+Figure~\ref{fig:elf-layout} shows the layout of a single corpus instantiation.
+Every corpus member is exactly 1{,}048 bytes with identical offsets, and varies only in three regions: the ELF header (one variant), the two-entry program header table (four variants that change the second program header's type field across \texttt{PT\_NOTE}, \texttt{PT\_INTERP}, \texttt{PT\_DYNAMIC}, and \texttt{PT\_NULL}), and the section region (five variants that toggle which sections contain real data versus zeroed bytes).
+The Cartesian product yields $1 \times 4 \times 5 = 20$ instantiations and 380 pairwise comparisons.
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/elf-layout.pdf}
+\caption{Fixed-layout ELF corpus. Every one of the 20 instantiations has the same byte offsets. The three template children (\texttt{elf\_header}, \texttt{program\_header}, \texttt{section\_header}) carry 1, 4, and 5 alternatives respectively.}
+\label{fig:elf-layout}
+\end{figure}
+
+\textbf{Results.}
 On libelf, \toolname produces a labeled CFG with 358 nodes and 354 edges.
 Of these, 68 basic blocks receive the \texttt{section\_header} label.
 The \texttt{program\_header} production receives zero labels despite having four template variants.
-This reflects a fundamental property of binary format parsing: libelf reads all program header types through the same code path, because the type field is data stored in a struct rather than a dispatch key that selects between alternative parsing routines.
-Section types do trigger different code paths: sections with symbol-table type cause the harness to iterate symbol entries, while null sections skip this work entirely.
+
+\textbf{Why \texttt{program\_header} is unlabeled.}
+Libelf reads all program-header types through the same code path.
+The \texttt{p\_type} field is data stored in a struct; libelf does not branch on it during parsing.
+The basic-block trace through \texttt{gelf\_getphdr} is therefore identical across the four variants, and the difference algorithm has no edges to attribute.
+Section types, by contrast, do trigger different code paths: sections with \texttt{SHT\_SYMTAB} type cause the harness to iterate symbol entries via \texttt{gelf\_getsym} and resolve names via \texttt{elf\_strptr}, while null sections skip these operations.
 
 \begin{table}[h]
-\caption{ELF label distribution (libelf).}
+\caption{ELF label distribution (libelf). The high ambiguity rate reflects libelf's structure: most code is shared across section types.}
 \label{tab:elf-labels}
 \centering
 \begin{tabular}{lr}
@@ -125,24 +138,34 @@ section\_header & 68 \\
 \end{tabular}
 \end{table}
 
-The high ambiguity rate (202 blocks, 74.8\% of the labeled graph) reflects the structure of libelf.
-Most of its code (memory allocation, data conversion, error checking) is shared across all section types.
-The labeled blocks concentrate in libelf's section-data initialization routine and the harness's conditional symbol-table iteration loop.
+\textbf{Where the labels land.}
+Figure~\ref{fig:elf-cfg} shows 12 of the 68 labeled blocks, taken directly from our \texttt{out.dot}.
+They cluster in three places: the harness's \texttt{walk\_section\_headers} loop, libelf's \texttt{\_\_libelf\_set\_rawdata\_wrlock} section-data initialization routine, and libelf's lookup routines (\texttt{elf\_strptr}, \texttt{gelf\_getsym}).
+The cross-function arrows are real edges from the trace: control flows from the harness's conditional branch into libelf's section setup and from there into the symbol-table walk only for sections that actually carry a symbol table.
 
-This result reveals a meaningful contrast with text-format parsers.
-Text formats like JSON and URIs require different parsing code for each production (string escaping has no overlap with numeric parsing), which yields many labeled productions.
-Binary formats like ELF use uniform record readers for most structures, with variation appearing only in the consumer code that processes the parsed data conditionally.
-\toolname captures this distinction without anyone having to tell it.
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/elf-cfg-fragment.pdf}
+\caption{12 of the 68 \texttt{section\_header}-labeled basic blocks. Solid arrows are intra-function control flow; dashed arrows are cross-function call edges.}
+\label{fig:elf-cfg}
+\end{figure}
 
-Manual inspection of all 68 labeled blocks yields 62 true positives (91.2\% accuracy) and 5 false positives.
-The false positives are in an internal libelf header-validation routine that is called incidentally during section traversal.
-These blocks process the ELF header rather than section headers, but are reached only through section-handling code paths.
-No false negatives were identified: unlabeled blocks in the graph correspond to genuinely shared code (memory allocation, common initialization) or type-uniform readers.
+\textbf{Accuracy.}
+Manual inspection of all 68 labeled blocks yields 62 true positives (91.2\%) and 5 false positives.
+The 5 false positives all sit inside \texttt{\_\_gelf\_getehdr\_rdlock}, an ELF-header validation routine that libelf calls internally during section traversal.
+Those blocks process the ELF header rather than section headers, but they are reached only through section-handling code paths and so appear in the differential edge set.
+We did not identify any false negatives: unlabeled blocks in the graph correspond either to memory allocation, common initialization, or libelf's type-uniform readers like \texttt{gelf\_getphdr}.
+
+\textbf{What this reveals about binary formats.}
+Text-format parsers label 6 to 11 distinct productions (JSON, URI).
+Our binary-format evaluation labels exactly one (\texttt{section\_header}).
+This is not a defect of \toolname; it accurately captures the structural property that binary parsers use uniform record readers for most structures and conditional consumer code for the rest.
+The labels show up where the conditional logic lives.
 
 \subsection{Cross-Format Comparison}\label{sec:eval:comparison}
 
 \begin{table}[t]
-\caption{Cross-format evaluation summary. Inst. = template instantiations; BBs = total basic blocks in the output CFG; Labels = blocks that received a label; Acc. = accuracy (TP / (TP + FP)).}
+\caption{Cross-format evaluation summary. Inst.\ = template instantiations; BBs = total basic blocks in the output CFG; Labels = blocks that received a label; Acc.\ = strict accuracy (TP / (TP + FP)).}
 \label{tab:crossformat}
 \centering
 \begin{tabular}{llrrrr}
@@ -158,8 +181,12 @@ ELF    & libelf        & 20       & 358  & 68   & 91.2 \\
 \end{tabular}
 \end{table}
 
-A pattern worth flagging in this table: JSON uses only 27 instantiations but labels 294 basic blocks (63\% of the graph), while URI uses 1{,}458 instantiations but labels only 211 (40\%).
-The labeling rate is not determined by corpus size.
-It tracks the structural complexity of the format and the degree to which the parser uses production-specific code paths.
+\textbf{Coverage is not a function of corpus size.}
+JSON uses 27 instantiations and labels 294 blocks (63\% of the graph).
+URI uses 1{,}458 instantiations and labels 211 blocks (40\%).
+ELF uses 20 instantiations and labels 68 blocks (19\%).
+The labeling rate tracks the structural complexity of the parser rather than the size of the input corpus.
+Text formats with per-production parser routines saturate with small corpora.
+Binary formats with uniform record readers produce sparse but high-confidence labels regardless of corpus size.
 
 \textit{[BEN: fill in the remaining accuracy columns when Rishav's labeled SVGs and your HPACK results arrive.]}

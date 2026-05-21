@@ -19,3 +19,6 @@ docker/*.log
 scratch/
 tmp/
 *.swp
+
+# Tectonic-rendered figure previews (regenerable from PDFs)
+paper/figures/*.pdf.png

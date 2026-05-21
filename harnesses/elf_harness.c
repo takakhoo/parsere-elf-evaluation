@@ -1,5 +1,5 @@
 /*
- * ParseRE — ELF evaluation harness.
+ * ParseRE ELF evaluation harness.
  *
  * Reads an ELF file from stdin, walks its structure using libelf's public API.
  * Exits 0 on success, 1 on any parse failure.
@@ -45,7 +45,7 @@ static int walk_section_headers(Elf *e, size_t shstrndx) {
 
         const char *name = elf_strptr(e, shstrndx, shdr.sh_name);
         if (name == NULL) {
-            /* Some sections may have no name — not an error. */
+            /* Some sections may have no name. Not an error. */
             continue;
         }
 

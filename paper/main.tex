@@ -46,15 +46,13 @@
 \maketitle
 
 \begin{abstract}
-Annotating basic blocks of an unknown binary with semantic labels is useful for reverse engineering, and much of that semantic information can be derived from the inputs the basic blocks process.
-We present a technique for annotating binary implementations of known input formats with labels that reflect the input grammar.
-The technique transfers annotations from inputs to programs by discovering execution trace differences and interpreting them in the context of the input annotations.
-The analysis runs in time comparable to the initial analysis pass of reverse engineering tools such as Ghidra, and reveals the structure of complex parser code in a fraction of the time required by manual inspection.
-Prior approaches to similar problems require instrumentation of the target program or dataflow analysis.
-Our technique requires only basic-block traces from the target along with a corpus of annotated inputs.
-
-We evaluate the accuracy of \toolname on parsers for four data formats spanning the language hierarchy: URI (regular), JSON (context-free), HPACK (context-sensitive binary), and ELF (offset-driven binary).
-On the completed ELF evaluation, manual inspection of every label yields a strict accuracy of 91.2\%.
+Reverse engineers who already understand the input format a binary parses spend most of their initial effort locating the code that implements each piece of the format.
+We present \toolname, a binary-only tool that automates that step.
+Given a grammar template for the input format, \toolname instantiates a corpus of structurally varied inputs, traces each one under \QEMU user-mode emulation, compares pairs of traces whose parse trees differ in exactly one production, and attributes the differential basic blocks to that production.
+A two-step uniqueness filter removes shared code, and the result is a labeled control-flow graph in which most parser-relevant basic blocks carry the name of the grammar rule they implement.
+Unlike prior approaches, \toolname requires no source code, no compiler instrumentation, and no data-flow analysis.
+We evaluate on parsers for four formats spanning the language hierarchy: URI (regular), JSON (context-free), HPACK (context-sensitive binary), and ELF (offset-driven binary).
+On the completed ELF evaluation against libelf, manual inspection of every label yields 91.2\% strict accuracy across 68 labeled basic blocks.
 \textit{[BEN: URI and JSON accuracy rates pending Rishav's labeled SVG handoff. HPACK numbers pending your evaluation.]}
 \end{abstract}
 

@@ -1,89 +1,61 @@
 \section{Design}\label{sec:design}
 
-\toolname is designed to associate input grammar elements with the program regions that process them.
-Our approach rests on the hypothesis that parsing routines are structured such that distinct grammar constructs are handled by distinct regions of the control-flow graph.
-
-Figure~\ref{fig:overview} sketches the pipeline.
-The four phases are: (1)~corpus generation from a grammar template, (2)~execution tracing under \QEMU, (3)~associating parse-tree deltas with trace deltas, and (4)~a uniqueness filter that distills the per-production labels.
+\toolname runs as a four-stage pipeline, shown in Figure~\ref{fig:overview}.
+The top row converts a grammar template into traced execution.
+The bottom row converts traced execution into a labeled CFG.
+Every stage except the grammar template itself is format-agnostic; adding a new format requires only writing a new template and compiling a small harness against the parser library under test.
 
 \begin{figure*}[t]
 \centering
-\resizebox{\textwidth}{!}{
-\begin{tikzpicture}[
-    nodes={draw, rounded corners=3pt, minimum height=1cm, text width=3.5cm, align=center},
-    -stealth,
-    >=Stealth,
-    node distance=1.8cm
-]
-  \node (template) {Grammar Template\\{\footnotesize (e.g., JSON, URI)}};
-  \node (corpus) [right=of template] {Labeled Input Corpus\\{\footnotesize $n$ parse trees}};
-  \node (trace) [right=of corpus, ellipse, text width=2.8cm] {Trace Under\\QEMU};
-  \node (traces) [right=of trace] {Basic-Block\\Traces};
-  \node (diff) [below=1.5cm of corpus] {Pairwise\\Parse-Tree Diffs};
-  \node (assoc) [right=of diff, ellipse, text width=3cm] {Associate Labels\\to Edge Deltas};
-  \node (unique) [right=of assoc, ellipse, text width=3cm] {Two-Step\\Uniqueness Filter};
-  \node (render) [right=of unique] {Labeled CFG\\{\footnotesize + Ghidra annotations}};
-
-  \draw (template) -- node[above, draw=none, text width=2cm, align=center] {\footnotesize instantiate} (corpus);
-  \draw (corpus) -- (trace);
-  \draw (trace) -- (traces);
-  \draw (corpus) -- (diff);
-  \draw (diff) -- (assoc);
-  \draw (traces) |- (assoc);
-  \draw (assoc) -- (unique);
-  \draw (unique) -- (render);
-\end{tikzpicture}}
-\caption{Overview of the \toolname pipeline. Rectangles are data artifacts; ellipses are processing steps. The grammar template is format-specific. All other steps are format-agnostic.}
+\includegraphics[width=0.92\linewidth]{figures/pipeline.pdf}
+\caption{The \toolname pipeline. Cream rectangles are data artifacts. Salmon rounded rectangles are processing steps. The green rectangle is the final output. Vertical arrows bridge the two rows: the input corpus drives both the tracing pass (top) and the pairwise diff computation (bottom), and the resulting basic-block traces feed the label-association step.}
 \label{fig:overview}
 \end{figure*}
 
-\subsection{Corpus Generation from Templates}\label{sec:design:corpus}
+\subsection{Corpus Generation}\label{sec:design:corpus}
 
-\toolname begins with a grammar template: a tree of production rules where each leaf offers a small set of byte-level alternatives, and each internal node offers a set of child configurations.
-Given a template, \toolname enumerates every combination of alternatives, yielding a corpus of concrete inputs each paired with its parse tree.
+A grammar template is a tree of production rules.
+Each leaf carries a small set of byte-level alternatives; each internal node carries a set of child configurations.
+\toolname enumerates every combination of alternatives through Cartesian product, producing a corpus of concrete inputs each paired with its parse tree.
 
 The templates are deliberately small.
-For JSON, the template generates inputs containing objects, arrays, strings, numbers, booleans, and null values in various combinations.
-For URI, it generates URIs with varying schemes, authorities, paths, queries, and fragments.
-The key property is that every pair of instantiations differs in exactly one or a small number of grammar productions, which enables clean attribution.
+The JSON template covers objects, arrays, strings, numbers, booleans, null, and a handful of degenerate cases (nan, inf), instantiating to 27 inputs.
+The URI template covers scheme, authority, path, query, and fragment, instantiating to 1{,}458 inputs.
+The ELF template, described in Section~\ref{sec:eval:elf}, instantiates to 20 inputs.
+
+\textbf{The key property.}
+For every pair of inputs we generate, the parse trees differ in either a single production or a small set of productions.
+This is what makes attribution possible.
+If two inputs differed in arbitrary ways, the trace differences between them could not be cleanly attributed to any single grammar element.
 
 \subsection{Execution Tracing}\label{sec:design:trace}
 
-Each input in the corpus is fed to the target binary, which runs under \QEMU in user-mode emulation.
-\QEMU logs every basic block it translates, producing a trace file for each input.
-\toolname parses each trace into an ordered sequence of basic blocks and retains only blocks within the target's executable segment.
-Blocks from the dynamic linker and \QEMU runtime are discarded.
+Each input is fed to the target binary, which runs under \QEMU in user-mode emulation.
+\QEMU logs every translated basic block to a per-input trace file with the block's start address and the disassembly of its first and last instructions.
+\toolname parses each trace into an ordered block sequence, retains only blocks within the target binary's executable segment, and converts the sequence into an edge map: the set of consecutive basic-block pairs observed during execution.
 
-For each input, the trace becomes a block trace (the sequence of basic blocks visited) and an edge map (the set of consecutive basic-block pairs observed).
-The edge map is the primary representation we use for differential analysis.
+Traces from inputs that the parser rejects (non-zero exit status) are dropped.
+The CFG is built from successful parses, where the parser exercises its full grammar-handling logic.
 
-\subsection{Associating Labels to Trace Deltas}\label{sec:design:assoc}
+\subsection{Label Association}\label{sec:design:assoc}
 
-For each pair of inputs whose parse trees differ in exactly one production, \toolname computes the \textbf{edge delta}: the set of edges present in one trace but not the other.
-The differing production label is then associated with those edges.
+For every pair of inputs $(T_i, T_j)$ whose parse trees differ in exactly one production $p$, \toolname computes the edge delta $E_i \setminus E_j$ and attributes those edges to $p$.
+Aggregating over every input pair that isolates $p$ yields the per-production edge set.
 
-Formally, let $T_i$ and $T_j$ be two inputs whose parse trees differ only in production $p$.
-Let $E_i$ and $E_j$ be their edge maps.
-The edges $E_i \setminus E_j$ are attributed to production $p$.
-Aggregating over all input pairs that isolate $p$ yields a set of edges associated with $p$.
-
-\subsection{Uniqueness Filter}\label{sec:design:unique}
-
+\textbf{Two-step uniqueness filter.}
 Raw edge-to-label associations are noisy.
-Many edges are shared across productions, for example error-handling code that runs for any malformed input.
-\toolname applies a two-step filter to clean the associations.
+Many edges are shared across productions, including error-handling code and shared token-tape advancement.
+\toolname strips this noise in two steps:
 
 \begin{enumerate}
-    \item \textbf{Subset removal.} If the edge set for production $p_1$ is nearly a subset of the edge set for $p_2$ ($|p_1 \setminus p_2| / |p_1| < 0.1$), we remove $p_1$'s edges from $p_2$'s set. This eliminates noise from shared setup and teardown code.
-    \item \textbf{Strict uniqueness.} For each production, we subtract the edges attributed to every other production. Only edges attributable to a single production receive a label.
+    \item \textbf{Subset removal.} If the edge set for production $p_1$ is nearly a subset of the edge set for $p_2$ ($|p_1 \setminus p_2| / |p_1| < 0.1$), \toolname removes $p_1$'s edges from $p_2$'s set. This eliminates setup and teardown code that runs for multiple productions but is most strongly associated with one.
+    \item \textbf{Strict uniqueness.} For every production, \toolname subtracts the edges attributed to every other production. Edges that survive belong to a single production and receive its label.
 \end{enumerate}
 
 After filtering, \toolname propagates colors backward through the CFG.
-If every outgoing edge of a node carries the same label, the node itself receives that label.
-This captures basic blocks that are the sole entry point to a production-specific subgraph.
+A node whose outgoing edges all carry the same label is itself labeled with that color, which captures basic blocks that serve as sole entry points into a production-specific subgraph.
 
 \subsection{Output}\label{sec:design:output}
 
-The final output is a graph with colored edges and nodes, rendered for visual inspection.
-\toolname also emits an address-to-label mapping that an analyst can import into a disassembler.
-A companion Ghidra script attaches per-block annotations to the disassembly listing, which lets the analyst inspect the labeling directly inside the reverse-engineering workflow.
+\toolname emits three artifacts: a Graphviz DOT file of the labeled CFG, a rendered SVG for browser inspection, and an address-to-label mapping the analyst can import into a disassembler.
+A companion Ghidra script consumes the address mapping and attaches per-block annotations to the disassembly listing, which lets the analyst inspect labels directly inside the reverse-engineering workflow.

@@ -1,16 +1,20 @@
-# URL Evaluation (curl)
+# evaluations/url/
 
-Target: [curl](https://github.com/curl/curl), commit `462244447e8ba3a53b1ba9f0ba7baa52d8777daa`.
+Ben,
 
-Entry point: `curl_url_set(handle, CURLUPART_URL, input, ...)`.
+Real run of your URI template against curl. Used your `URI_PARSE_TREE_TEMPLATE` as-is. This is the evaluation that taught me about static linking the hard way.
 
-The URI template was defined by Ben. This evaluation took the longest to debug because of the static-linking lesson described below.
+## Target
+
+[curl](https://github.com/curl/curl), commit `462244447e8ba3a53b1ba9f0ba7baa52d8777daa`. Built from source with `--without-shared` and most optional features disabled, linked statically through `libcurl.a`.
+
+Entry point: `curl_url_set(handle, CURLUPART_URL, input, 0)`.
 
 ## Headline numbers
 
 | Metric | Value |
-|--------|-------|
-| Template instantiations | 1458 |
+|--------|------:|
+| Template instantiations | 1,458 |
 | Pairwise comparisons | 2,125,764 |
 | CFG nodes after cleanup | 522 |
 | CFG edges | 558 |
@@ -19,8 +23,8 @@ The URI template was defined by Ben. This evaluation took the longest to debug b
 
 ## Label distribution
 
-| Production | Labeled BBs | Fraction |
-|-----------|------------:|---------:|
+| Production | Labeled BBs | % |
+|-----------|------------:|---:|
 | host | 91 | 43.1% |
 | port | 31 | 14.7% |
 | segment | 30 | 14.2% |
@@ -33,25 +37,27 @@ The URI template was defined by Ben. This evaluation took the longest to debug b
 | fragment | 2 | 0.9% |
 | path-abempty | 1 | 0.5% |
 
-`host` dominates because curl's URL parser does extensive host validation: IPv4 vs IPv6 vs hostname, IDNA, bracket handling. Lots of code, all attributable to the `host` production.
+`host` dominates because curl's URL parser does extensive host validation: IPv4 vs IPv6, IDNA, bracket handling, length checks.
 
-The duplicate-looking labels (`port` vs `:port`, `query` vs `?query`, `fragment` vs `#fragment`) come from the template's leaf naming. The colon/question-mark/hash prefixes indicate that the delimiter character was included in the label string. This is a template-design quirk in Ben's URI definition; the underlying code is correctly attributed.
+The duplicate-looking labels (`port` vs `:port`, `query` vs `?query`, etc.) come from your template's leaf naming. The colon/question/hash prefix indicates the delimiter character was included in the label. Template-design quirk; the underlying attribution works fine.
 
-## The static-linking lesson
+## The static linking lesson
 
-The first attempt at this evaluation produced zero labeled blocks.
+First run produced zero labeled blocks. Confusing because the JSON eval had worked fine.
 
-The harness was linked with `-lcurl` against the system libcurl, which loaded dynamically at runtime. Dynamic linking adds a large startup phase before `main()` runs: ld.so resolves every imported symbol, traverses the DT_NEEDED list, runs the .init array. All of that work happens *every time the binary is invoked*, regardless of what input it gets.
+Spent maybe an hour comparing the two before I realized: the JSON harness linked against `libjson-c.a` (static `.a` produced by the cmake build), but the URL harness was using `-lcurl` against the system `libcurl.so`. Dynamic linking adds an enormous startup phase before `main()` runs: ld.so resolves every imported symbol, traverses the DT_NEEDED list, runs the .init array. All of that runs on every input regardless of what input it is.
 
-ParseRE's useless-edges filter looks for edges that appear in every trace. Edges that always fire are not informative about which input feature is being processed. The dynamic linker code is, by definition, run on every input. ParseRE wiped the entire graph because every node had a dynamic-linker prefix.
+ParseRE's useless-edges filter looks for edges that appear in every trace, on the reasonable assumption that edges that always fire aren't informative about which input feature is being processed. The dynamic linker code is exactly that. ParseRE wiped the entire graph.
 
-Fix: rebuild curl from source with `--without-shared` to get a static `libcurl.a`, link the harness against that. The dynamic-linker startup is still there (we still rely on libc dynamically), but the parser code is no longer behind it.
+Fix: rebuild curl from source with `--without-shared`, link the harness against the static archive. The dynamic linker startup is still there (we still rely on libc dynamically) but it's no longer in front of the parser code.
 
-The Dockerfile bakes this in: there is a multi-step curl build with all optional features disabled and `--without-shared`. The fact that this works is the main reason every harness in this repo is statically linked where possible.
+The Dockerfile bakes this in. The whole curl build is in there.
+
+This lesson is in the paper now (Section IV-C). It's also why the ELF harness uses `-static` full static linking.
 
 ## TP/FP/FN status
 
-**Waiting on Rishav.** Same as JSON. He labeled the URI output during the May 19 session and was going to send back text files. The accuracy column in the paper's cross-format table remains blank until they arrive.
+Waiting on Rishav, same as JSON.
 
 ## Running
 
@@ -60,4 +66,6 @@ mkdir -p output
 docker run --platform linux/amd64 --rm -v "$PWD/output:/output" parsere-runner url
 ```
 
-About 8 minutes end-to-end on an M1 because of the 2.1 million pairwise comparisons. Most of the time is the pairwise diff computation, not the QEMU tracing.
+About 8 minutes end-to-end on my M1 because of the 2.1M pairwise comparisons. Most of the time is the diff computation, not QEMU tracing.
+
+Taka

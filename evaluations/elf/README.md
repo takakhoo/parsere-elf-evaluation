@@ -1,30 +1,32 @@
-# ELF Evaluation
+# evaluations/elf/
 
-The fourth evaluation in the ParseRE paper. Target library: libelf from elfutils, the reference implementation used by Ghidra, radare2, and most binary analysis toolchains.
+Ben,
 
-## Files
+This is the ELF evaluation I built for the paper. The whole thing is reproducible: regenerate the corpus, rebuild the template, rerun ParseRE, and the numbers come out identical.
+
+## What landed here
 
 ```
 elf/
-├── README.md          you are here
-├── corpus/            8 generated ELF64 files, 1048 bytes each
-├── output/            real run output from May 21
-│   ├── parsere.out
-│   ├── out.dot
-│   ├── out.svg
-│   ├── RESULTS.md
-│   └── MANUAL_LABELING.md
+├── README.md              you are here
+├── corpus/                8 ELF64 files, 1048 bytes each, all valid per readelf
+├── output/                real ParseRE output from May 21
+│   ├── parsere.out        269 lines, 68 of them labeled section_header
+│   ├── out.dot            full CFG with addr2line annotations
+│   ├── out.svg            rendered CFG, open in a browser
+│   ├── RESULTS.md         summary with tables and observations
+│   └── MANUAL_LABELING.md per-function TP/FP breakdown
 └── scripts/
-    ├── gen_elf_corpus.py    builds the 8 corpus files
-    ├── gen_template.py      builds elf_template.py from the corpus
-    └── elf_template.py      generated, contains baked byte literals
+    ├── gen_elf_corpus.py  builds the 8 corpus files
+    ├── gen_template.py    builds elf_template.py from the corpus
+    └── elf_template.py    generated, contains the byte literals
 ```
 
 ## Headline numbers
 
 | Metric | Value |
-|--------|-------|
-| Template instantiations | 20 (1 x 4 x 5) |
+|--------|------:|
+| Template instantiations | 20 (1 × 4 × 5) |
 | Pairwise comparisons | 380 |
 | CFG nodes after cleanup | 358 |
 | CFG edges | 354 |
@@ -34,40 +36,39 @@ elf/
 | False positives | 5 |
 | **Strict accuracy** | **91.2%** |
 
-Per-function breakdown is in [output/MANUAL_LABELING.md](output/MANUAL_LABELING.md).
+Per-function TP/FP breakdown is in `output/MANUAL_LABELING.md`.
 
-## How the corpus was generated
+## How the corpus is generated
 
-[`scripts/gen_elf_corpus.py`](scripts/gen_elf_corpus.py) builds eight valid ELF64 files with a fixed layout:
+`scripts/gen_elf_corpus.py` builds eight valid ELF64 files with a fixed layout:
 
 ```
 [0:64]      ELF header (Elf64_Ehdr)
-[64:176]    Program header table (2 x Elf64_Phdr)
+[64:176]    Program header table (2 × Elf64_Phdr)
 [176:240]   .shstrtab data (section-name string table)
 [240:360]   .strtab data (symbol-name string table)
 [360:600]   .symtab data (10 Elf64_Sym entries)
 [600:664]   .text data (placeholder code)
-[664:1048]  Section header table (6 x Elf64_Shdr)
+[664:1048]  Section header table (6 × Elf64_Shdr)
 ```
 
-The eight variants differ only in:
-1. The type of the second program header: PT_NOTE, PT_INTERP, PT_DYNAMIC, or PT_NULL
-2. Which sections are populated (symbol table, string table, text, in various combinations)
+Every file is exactly 1048 bytes. The eight variants differ only in two dimensions:
 
-Every file is exactly 1048 bytes. Every file passes `readelf -a` validation.
+1. The second program header's `p_type`: `PT_NOTE`, `PT_INTERP`, `PT_DYNAMIC`, or `PT_NULL`
+2. Which sections are populated: full, no-symtab, no-strtab, no-symtab-or-strtab, no-text
 
-## How the template was generated
+Every file passes `readelf -a` validation.
 
-The trick with binary formats is that you cannot just write byte-level alternatives by hand; the offsets in the header have to match the actual positions of the content. So [`scripts/gen_template.py`](scripts/gen_template.py) builds the template programmatically:
+## How the template plugs in
 
-1. Generate every corpus variant in memory.
-2. Slice each variant into three regions: ELF header (bytes 0-64), program header table (bytes 64-176), section region (bytes 176-1048).
-3. Collect the unique byte sequences in each region across all variants.
-4. Emit a ParseTreeTemplate definition with three children: `elf_header` (1 unique sequence), `program_header` (4 unique sequences), `section_header` (5 unique sequences).
+The trick with binary formats is that you can't write byte alternatives by hand. The offsets in the ELF header have to match the actual positions of the content, the section header table has to point at real sections, etc. So I wrote a generator (`scripts/gen_template.py`) that:
 
-When ParseRE's `instantiate()` does the Cartesian product, it produces 1 x 4 x 5 = 20 byte strings, each of which is a valid 1048-byte ELF file.
+1. Generates every corpus variant in memory.
+2. Slices each variant into three regions: header (0-64), program headers (64-176), section region (176-1048).
+3. Collects unique byte sequences per region across the variants.
+4. Emits a `ParseTreeTemplate` definition with three children.
 
-[`scripts/elf_template.py`](scripts/elf_template.py) is the output of `gen_template.py`. The same byte constants are inlined directly into [`../../parsere/main.py`](../../parsere/main.py) at the `ELF_PARSE_TREE_TEMPLATE` definition.
+The byte literals it produces are also inlined directly into `parsere/main.py` at the `ELF_PARSE_TREE_TEMPLATE` definition. When `instantiate()` does the Cartesian product, it generates 1 × 4 × 5 = 20 byte strings, each of which is a valid 1048-byte ELF file.
 
 ## Running the evaluation
 
@@ -80,67 +81,38 @@ docker run --platform linux/amd64 --rm \
   parsere-runner elf
 ```
 
-About 10 seconds end-to-end on an M1. Most of that is QEMU startup for the 20 inputs.
+About 10 seconds end-to-end on my M1. Most of it is QEMU startup for the 20 inputs.
 
 ## Reproducing the corpus
 
-You can regenerate the corpus files at any time:
+You can regenerate at any time:
 
 ```bash
 cd evaluations/elf/scripts
-python3 gen_elf_corpus.py ../corpus
+python3 gen_elf_corpus.py ../corpus    # writes the 8 ELF files
+python3 gen_template.py                 # writes elf_template.py
 ```
 
-And rebuild the template:
+The generator is deterministic so byte literals should match exactly. If they ever drift, update the `ELF_PARSE_TREE_TEMPLATE` in `parsere/main.py` and rebuild the Docker image.
 
-```bash
-python3 gen_template.py
-# produces elf_template.py
-```
+## The `program_header` mystery (resolved)
 
-If the regeneration changes the byte literals (it should not, the generator is deterministic), update the `ELF_PARSE_TREE_TEMPLATE` in `parsere/main.py` accordingly. The Docker image needs a rebuild after that change.
+When I first ran this I expected `program_header` to get labels because I had four variants of it. Got zero. Spent half an hour double-checking the template before I figured it out:
 
-## Why `program_header` produced zero labels
+Libelf reads program headers with `gelf_getphdr`. It's a single function that unpacks 56 bytes into a struct. The `p_type` field gets stored in the struct, but libelf doesn't branch on it during parsing. So the trace through `gelf_getphdr` is byte-for-byte identical for PT_NOTE, PT_INTERP, PT_DYNAMIC, and PT_NULL inputs. No trace difference, no labels.
 
-This is the most interesting finding from the ELF evaluation, and it ended up shaping the discussion section of the paper.
+Section types are different because the harness has a real conditional on `sh_type`. Variants with a real symtab take the symtab-walking branch and execute `gelf_getsym` and `elf_strptr`. Variants where the symtab is empty skip the branch.
 
-The four `program_header` variants differ only in the `p_type` field of the second phdr (PT_NOTE vs PT_INTERP vs PT_DYNAMIC vs PT_NULL). Libelf reads program headers with `gelf_getphdr`, which is a fixed function that does:
+This generalizes to a paper-worthy observation that ended up in Section IV-E: text formats have per-production parser routines, binary formats have uniform record readers, and the labels appear where conditional consumer code lives.
 
-```c
-GElf_Phdr *gelf_getphdr(Elf *elf, int ndx, GElf_Phdr *dst) {
-    // Same 56-byte unpack regardless of p_type
-    memcpy(&dst->p_type, raw + 0, 4);
-    memcpy(&dst->p_flags, raw + 4, 4);
-    memcpy(&dst->p_offset, raw + 8, 8);
-    // ... etc
-    return dst;
-}
-```
+## Why the corpus is small
 
-There is no type-specific dispatch. The `p_type` field gets read into a struct, but libelf does not branch on it. So the basic-block trace through `gelf_getphdr` is identical for all four variants, the edge sets come out identical, and ParseRE's difference algorithm finds no edges to attribute to `program_header`.
+The other evaluations have much larger corpora (JSON 27, URL 1458). My ELF corpus is 20. A larger corpus would require more orthogonal variation dimensions, and the obvious candidates each break the fixed-layout invariant:
 
-Contrast with `section_header`: the harness has a real conditional:
+- Varying `e_machine` would require multi-architecture support that our harness doesn't have.
+- Varying the number of program headers would change the offset of the section data.
+- Varying `e_class` (32-bit vs 64-bit) would require completely different struct layouts.
 
-```c
-if (shdr.sh_type == SHT_SYMTAB || shdr.sh_type == SHT_DYNSYM) {
-    // walk the symbol table
-    Elf_Data *data = elf_getdata(scn, NULL);
-    ...
-}
-```
+For the paper's cross-format comparison, 20 instantiations is enough to demonstrate the binary vs text contrast. Larger corpora are natural follow-up work.
 
-Variants that have a non-null symtab take this branch and execute `elf_getdata`, `gelf_getsym`, and `elf_strptr`. Variants where the symtab is empty skip the branch. Different traces, different edge sets, attribution works.
-
-This generalizes to a paper-worthy observation: text formats have per-production parser functions, so every production gets its own labels. Binary formats have uniform record readers, so labels appear only where consumer code conditionally processes the parsed structures. ParseRE captures exactly that distinction without anyone having to tell it.
-
-## Why this evaluation is small (20 instantiations)
-
-The other evaluations have much larger corpora:
-
-- JSON: 27 instantiations
-- URL: 1458 instantiations
-- ELF: 20 instantiations
-
-A larger ELF corpus would require more orthogonal variation dimensions. The current template varies two things (phdr type and section presence). Adding more would mean varying `e_machine` (x86 vs ARM, but our harness is x86-64-only), varying the number of program headers (but the existing layout assumes exactly 2), or varying `e_class` (32-bit vs 64-bit). Each of these requires rewriting `gen_elf_corpus.py` to handle multiple layouts.
-
-For an ACSAC paper that wants a clean cross-format comparison, the 20-instantiation corpus is sufficient to demonstrate the binary-vs-text contrast. A larger corpus would be a natural follow-up.
+Taka

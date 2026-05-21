@@ -1,23 +1,45 @@
 \section{Introduction}\label{sec:intro}
 
-At the outset of a reverse-engineering project, the engineer must develop a sense of the program's high-level behavior in order to identify points of interest that warrant careful analysis.
-When the target's input format is well understood, much of that triage reduces to identifying which instructions in the binary implement which features of the input language.
-This paper presents a technique for doing exactly that.
-The basic idea is to run the target on a large corpus of valid inputs while collecting control flow traces, identify corpus elements with similar parse trees, and associate the delta in their control flow with the delta between their parse trees.
+Modern reverse-engineering workflows begin with a binary, a vague sense of what it does, and a long road from there to understanding.
+When the binary parses a known input format, much of that road can be skipped: any reverse engineer who already understands the format spends most of their initial effort locating the code that implements each piece of it.
+Existing tools either annotate the input (PolyFile~\cite{sultanik2019polyfile}), require source-level instrumentation to track data flow through the parser (PolyTracker~\cite{sultanik2024polytracker}), or compare two execution traces by hand (Tenet~\cite{gaasedelen2021tenet}).
+None of them produce a labeled map of the binary's control-flow graph from a known grammar alone.
 
-Consider a proprietary binary that validates TLS certificates.
-The analyst knows the input is an X.509 certificate and understands its grammar (version fields, subject names, key material, extensions) but has no source code.
-\toolname takes the certificate grammar together with a set of structurally varied certificates, traces the binary under \QEMU, and produces a labeled control-flow graph in which each grammar element maps to the basic blocks that process it.
-The analyst then begins reverse engineering with a semantically meaningful map of the parser rather than raw disassembly.
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/motivating.pdf}
+\caption{Two URIs that share scheme, host, and port but differ in the \texttt{path} subtree. The trace through the parser differs in a small set of basic blocks; those blocks receive the \texttt{path} label. ParseRE generalizes this idea over a corpus of structurally varied inputs.}
+\label{fig:motivating}
+\end{figure}
 
-We present \toolname and evaluate it on four input formats spanning the Chomsky hierarchy~\cite{chomsky1956three}: a regular language (URI), a context-free language (JSON), a context-sensitive binary format with internal compression (HPACK), and a structured offset-driven binary format (ELF).
-For each format we run \toolname on one or more popular open-source implementations, then validate by manually checking that each labeled basic block implements the grammar rule indicated by its label.
+\textbf{The Core Idea.}
+We present \toolname, a binary-only labeling tool driven by parse-tree differencing.
+Given a grammar template for the target's input format, \toolname instantiates a corpus of structurally varied inputs, traces each one under \QEMU user-mode emulation, and compares pairs of traces whose parse trees differ in exactly one production.
+Figure~\ref{fig:motivating} sketches the idea on two URIs that differ only in their path subtree: the trace blocks that fire for Input B but not Input A get attributed to the \texttt{path} production.
+Aggregated over the full corpus and filtered for uniqueness, the result is a labeled control-flow graph in which most parser-relevant basic blocks carry the name of the grammar rule they implement.
 
-\textbf{Contributions.} Our paper makes the following contributions to the field of reverse engineering:
+\textbf{Why this works in practice.}
+Parsers tend to dispatch on grammar production at the function level.
+A URI parser has a separate routine for host validation than for path canonicalization.
+A JSON parser has separate code paths for numeric tokens, string tokens, and structural tokens.
+Two inputs that differ only in their path subtree therefore tend to differ only in the basic blocks that process paths.
+\toolname exploits this regularity directly: the set of edges present in one trace but not the other tracks the production that varied between them.
+
+\textbf{Why this is hard in practice.}
+Real parsers also share large amounts of code across productions, including memory allocation, error reporting, and common token tape advancement.
+Naively attributing every differential edge to a production produces a noisy label set in which most labels appear on most blocks.
+\toolname applies a two-step uniqueness filter that strips edges shared across multiple productions before reporting a label, which is the difference between unusable output and the 91.2\% strict accuracy we measure on libelf.
+
+\textbf{Evaluation.}
+We evaluate \toolname on four input formats spanning the Chomsky hierarchy~\cite{chomsky1956three}: URI (regular, parsed by Curl), JSON (context-free, parsed by json-c), HPACK (context-sensitive binary, parsed by nghttp2), and ELF (offset-driven binary, parsed by libelf).
+For each format we run \toolname on a real-world parser and manually inspect every labeled basic block.
+The ELF evaluation, which is fully labeled, yields 68 labeled blocks at 91.2\% accuracy.
+\textit{[BEN: HPACK numbers pending your run. RISHAV: URI/JSON per-label TP/FP/FN pending your handoff.]}
+
+\textbf{Contributions.}
 \begin{itemize}
-    \item We introduce the first binary-only technique that transfers semantic labels from program inputs onto control-flow graph edges and nodes. This bridges the gap between input formats and program internals, assisting reverse engineering and parser understanding (Section~\ref{sec:design}).
-    \item We implement our technique in \toolname, a Python tool that requires only \QEMU and the target binary. We release \toolname as open source and demonstrate it on four input formats from different language classes (Section~\ref{sec:implementation}).
-    \textit{[BEN: confirm we can publish the public repo URL in the camera-ready. For dual-blind we leave it anonymous.]}
-    \item We evaluate \toolname on real-world parsers (Curl, Apache APR, json-c, libelf, and nghttp2) and validate every label through manual inspection (Section~\ref{sec:evaluation}).
-    \item Our work lays the groundwork for future applications in differential fuzzing, grammar mining, and vulnerability discovery (Section~\ref{sec:future}).
+    \item We introduce the first binary-only technique that transfers semantic labels from program inputs onto control-flow graph nodes and edges (Section~\ref{sec:design}).
+    \item We implement the technique in \toolname, a Python tool that requires only the target binary and a grammar template, and release it as open source.\textit{[BEN: confirm public URL for camera-ready.]}
+    \item We evaluate \toolname on real parsers (Curl, json-c, libelf, nghttp2, Apache APR) and manually inspect every label produced (Section~\ref{sec:evaluation}).
+    \item We identify a structural property of binary parsers (uniform record readers) that explains why binary formats produce fewer but higher-confidence labels than text formats, and show that \toolname captures this property without prior knowledge of it.
 \end{itemize}

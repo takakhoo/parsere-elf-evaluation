@@ -1,78 +1,57 @@
-# Related Work, Linked
+# references/
 
-The paper's related-work section is in [`../paper/sections/related-work.tex`](../paper/sections/related-work.tex). This folder is a casual companion: links, short notes on each cited paper, why we cite it.
+Ben,
+
+Quick map of the related work and where each piece lives. The paper's actual citations are in `paper/references.bib`.
 
 ## The closest cousins
 
-### Tenet (Markus Gaasedelen, 2021)
-[https://github.com/gaasedelen/tenet](https://github.com/gaasedelen/tenet)
+**Tenet** (Markus Gaasedelen, 2021): [github.com/gaasedelen/tenet](https://github.com/gaasedelen/tenet)
 
-IDA Pro plugin that highlights basic blocks differing between execution traces. Two-input differential analysis, no input-side labels. ParseRE generalizes this to N inputs with grammar attribution.
+IDA Pro plugin that highlights basic blocks differing between two execution traces. Two-input differential analysis, no input-side labels. We position ParseRE as the N-to-many generalization with grammar attribution.
 
-### Lighthouse (Markus Gaasedelen, 2017)
-[https://github.com/gaasedelen/lighthouse](https://github.com/gaasedelen/lighthouse)
+**Lighthouse** (Markus Gaasedelen, 2017): [github.com/gaasedelen/lighthouse](https://github.com/gaasedelen/lighthouse)
 
-Coverage exploration in IDA. Same author, same niche, less differential. Worth citing in the same paragraph as Tenet.
+Coverage exploration in IDA. Same author, same niche, less differential. Cited in the same paragraph as Tenet.
 
-### PolyFile / PolyTracker (Trail of Bits)
-[https://github.com/trailofbits/polyfile](https://github.com/trailofbits/polyfile)
-[https://github.com/trailofbits/polytracker](https://github.com/trailofbits/polytracker)
+## The "annotate the input" line
 
-The "annotate the input" tools. PolyFile parses a file and tells you which byte ranges are which structures. PolyTracker tracks data flow through a program at the LLVM IR level and produces a graph mapping input bytes to operations.
+**PolyFile / PolyTracker** (Trail of Bits): [github.com/trailofbits/polyfile](https://github.com/trailofbits/polyfile), [github.com/trailofbits/polytracker](https://github.com/trailofbits/polytracker)
 
-The methodological line we walk away from: PolyTracker needs LLVM instrumentation. That requires source code. ParseRE works on the binary alone, which is the actual reverse-engineering scenario.
+PolyFile parses a file and tells you which byte ranges are which structures. PolyTracker tracks data flow through a program at the LLVM IR level and produces a graph mapping input bytes to operations.
+
+The methodological line we walk away from: PolyTracker needs LLVM instrumentation, which requires source code. ParseRE works on the binary alone, which is the actual reverse-engineering scenario.
 
 ## Grammar recovery (the inverse problem)
 
-These tools answer "what does this binary eat?" given only the binary. ParseRE answers "given that this binary eats X, where is X handled?" The two problems are sequential, not competing.
+These tools answer "what does this binary eat?" given only the binary. ParseRE answers "given that this binary eats X, where is X handled?" The two problems are sequential rather than competing. The paper hammers this distinction in Section V-C.
 
-### Tupni (Microsoft Research, CCS 2008)
-[https://www.microsoft.com/en-us/research/publication/tupni-automatic-reverse-engineering-of-input-formats/](https://www.microsoft.com/en-us/research/publication/tupni-automatic-reverse-engineering-of-input-formats/)
+- **Tupni** (Microsoft Research, CCS 2008): dynamic analysis to infer input formats
+- **Polyglot** (CMU, CCS 2007): protocol message format inference
+- **AUTOGRAM** (Höschele and Zeller, ASE 2016): grammar inference from observed input-output behavior, source-code dependent
+- **Gopinath et al.** (2020): mining input grammars from dynamic control flow
+- **Prospex** (2009): protocol state machine recovery from network traces
 
-Dynamic analysis to infer input formats from observed program execution.
+## Differential testing
 
-### Polyglot (CMU, CCS 2007)
-[https://dl.acm.org/doi/10.1145/1315245.1315276](https://dl.acm.org/doi/10.1145/1315245.1315276)
+- **HTTP Garden** (your other paper): the elephant in the room. Not citing for dual-blind reasons, but ready to add for camera-ready. [BEN: confirm policy]
+- **T-Reqs** (Jabiyev et al., CCS 2021): differential testing of HTTP parsers
+- **ParDiff** (Zheng et al., 2024): static differential analysis of protocol parsers. Complementary to ParseRE: ParDiff finds disagreement, ParseRE localizes it.
 
-Extracts protocol message formats via dynamic binary analysis.
+## Useful tool papers for style reference
 
-### AUTOGRAM (Höschele and Zeller, ASE 2016)
-Mining context-free input grammars by observing what a program rejects vs. accepts. Source code dependent.
+- **angr SoK** (Shoshitaishvili et al., S&P 2016): the model for how to write a binary analysis tool paper. They name architectural modules but never name methods or filepaths.
+- **KLEE** (Cadar et al., OSDI 2008): the canonical symbolic execution paper.
+- **BAP** (Brumley et al., CAV 2011): binary analysis platform line.
 
-### Gopinath et al. (2020)
-"Mining input grammars from dynamic control flow." Closer in spirit to ParseRE in that it uses control flow, but for grammar inference, not label transfer.
+For language hierarchy: **Chomsky 1956** (the original paper) is the citation we use in the intro.
 
-### Prospex (2009)
-Protocol state machine recovery from network traces.
+## How ParseRE positions
 
-## Differential testing for parsers
-
-### HTTP Garden (Ben Kallus et al., 2024)
-The paper we are *not* citing because of dual-blind review. Ben's other paper at the same submission deadline. Cite in camera-ready.
-
-### T-Reqs (Jabiyev et al., CCS 2021)
-Differential testing of HTTP parsers. Same family of techniques as HTTP Garden, different focus.
-
-### ParDiff (Zheng et al., 2024)
-Static differential analysis of protocol parsers. Complementary to ParseRE: ParDiff finds disagreement between parsers, ParseRE could then localize where the disagreement lives.
-
-## How to position ParseRE against all of this
-
-Ben's framing from the May 19 transcript:
+From our May 19 conversation, your framing was:
 
 > "It's crucial that reviewers not confuse these two related but not the same problems."
 
-The two problems being:
-1. Grammar recovery (what does this binary eat?). Existing work.
-2. Label transfer (where does it eat the thing we know it eats?). ParseRE.
+The two problems being grammar recovery (existing work) versus label transfer (ours). The related-work section in the paper has three subsections matching the three lines of prior work, and explicitly positions us against each.
 
-The related-work section in the paper has three subsections corresponding to the three lines of prior work, and explicitly positions ParseRE against each.
-
-## Other references worth knowing about
-
-- angr (Shoshitaishvili et al., S&P 2016) for the SoK on binary analysis, and as a model for how to write a tool paper.
-- KLEE (Cadar et al., OSDI 2008) for the canonical symbolic execution paper.
-- BAP (Brumley et al., CAV 2011) for the binary analysis platform line of work.
-- Chomsky 1956 for the language hierarchy citation we use in the intro.
-
-The full BibTeX with the exact entries we cite is in [`../paper/references.bib`](../paper/references.bib).
+Taka

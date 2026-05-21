@@ -58,7 +58,7 @@
 
 1. **Binary formats have uniform record readers**: Unlike text formats where syntactically distinct productions (numbers, strings, arrays in JSON; host, port, path in URLs) trigger completely different parsing code, binary formats like ELF have uniform struct-reading operations. `gelf_getphdr()` always reads 56 bytes and unpacks them identically regardless of the phdr type field.
 
-2. **Labels come from *consumer* code, not *reader* code**: The 68 section_header labels are mostly in `__libelf_set_rawdata_wrlock` and the harness's symbol-table iteration loop -- code that *processes* the parsed data conditionally, not code that *reads* the raw bytes. This highlights a fundamental difference between text and binary format parsing.
+2. **Labels come from consumer code rather than reader code**: The 68 section_header labels are mostly in `__libelf_set_rawdata_wrlock` and the harness's symbol-table iteration loop. This is code that processes the parsed data conditionally rather than code that reads the raw bytes. The contrast highlights a fundamental difference between text and binary format parsing.
 
 3. **Lower coverage expected for binary formats**: The 19.0% labeling rate vs 63.4% (JSON) and 40.4% (URL) reflects the structural simplicity of binary format parsing. Fixed-offset binary formats need much less conditional parsing logic than variable-length text formats.
 

@@ -1,14 +1,15 @@
-# Paper Source
+# paper/
 
-LaTeX source for the ACSAC 2026 submission. Drop this whole folder into Overleaf and set `main.tex` as the root document.
+Ben,
 
-## File layout
+This is the ACSAC submission. Drop the whole folder into Overleaf and set `main.tex` as the root.
 
 ```
 paper/
 ├── main.tex          top-level, \input{}s every section
-├── IEEEtran.cls      IEEE conference class (do not modify)
-├── references.bib    bibliography
+├── IEEEtran.cls      IEEE conference class (don't touch)
+├── references.bib    bibliography, 14 entries, all real
+├── figures/          TikZ source for the four new figures + their compiled PDFs
 └── sections/
     ├── introduction.tex
     ├── background.tex
@@ -21,45 +22,59 @@ paper/
 
 ## Compiling locally
 
-If you have a TeX distribution installed:
+I use tectonic because it pulls packages on demand and avoids the full TeX Live install:
+
+```bash
+brew install tectonic
+cd paper
+tectonic main.tex
+# main.pdf shows up next to main.tex
+```
+
+If you prefer the traditional toolchain:
 
 ```bash
 cd paper
 latexmk -pdf main.tex
 ```
 
-Or step-by-step:
+## Where you (and Rishav) need to fill in
+
+I marked every open question with an italic inline tag. Grep for them:
 
 ```bash
-pdflatex main.tex
-bibtex main
-pdflatex main.tex
-pdflatex main.tex
+grep -rn '\\textit{\[BEN:\|\\textit{\[RISHAV:' sections/
 ```
 
-The output is `main.pdf`. ACSAC 2026 limits the body to 11 pages excluding references and the optional 5-page appendix.
+As of this commit:
+- 4 `[BEN:]` markers (HPACK results, QEMU version pinning, public repo URL, HTTP Garden citation policy)
+- 2 `[RISHAV:]` markers (URI per-block TP/FP/FN, JSON per-block TP/FP/FN)
 
-## Style notes
+When you fill one in, just delete the `\textit{[...]}` wrapper and put the real content.
 
-This paper follows the writing rules in [the repo root README](../README.md). A few things worth flagging:
+## New figures (vs. the prior draft)
 
-- IEEE conference format, `compsoc` option.
-- Anonymous submission. `\author{Anonymous}` in `main.tex`. Do not put real names in until ACSAC notification.
-- The body cap is 11 pages. The current draft is around 9 pages with placeholders for HPACK and the Rishav-pending accuracy numbers.
-- An Ethics section and an LLM Usage statement are mandatory per the ACSAC 2026 CFP. Both are in `future-work.tex`.
+Four PDFs in `figures/`:
 
-## Open items embedded in the .tex files
+1. **`motivating.pdf`**. Two URIs that differ only in their path subtree, used in the intro (Figure 1). Shows the idea visually before the formal design section.
+2. **`pipeline.pdf`**. Replaces the broken TikZ figure where one arrow went into an ellipse. Linear two-row layout, color-coded by data vs operation vs output.
+3. **`elf-layout.pdf`**. The 1048-byte ELF corpus layout with the three template children annotated. Goes in Section IV-E next to the ELF discussion.
+4. **`elf-cfg-fragment.pdf`**. 12 of the 68 labeled `section_header` blocks, with real addresses from `out.dot`. Shows how the labels group by function (harness vs libelf internals).
 
-Search for `[BEN:` or `[RISHAV:` in any of the section files to find inline questions and missing-data markers. These render as italic in the compiled PDF so they are obvious during review. They will all be cleared before submission.
+All four are hand-tuned TikZ. If you want to regenerate them:
 
 ```bash
-grep -n "\[BEN:\|\[RISHAV:\|TODO" sections/*.tex
+cd paper/figures
+tectonic motivating.tex pipeline.tex elf-layout.tex elf-cfg-fragment.tex
 ```
 
-## What still needs writing
+## Style rules I'm following
 
-- Fill in JSON and URI accuracy numbers once Rishav's labeled SVGs arrive
-- Fill in HPACK evaluation results when Ben finishes the experiment
-- Replace the Apache APR row in the cross-format table with real numbers
-- Final proofread for em-dashes and "X is Y, not Z" patterns
-- Page count check after all placeholders fill in
+- IEEE conference, `compsoc` option (ACSAC requires this).
+- Anonymous author block for dual-blind. Real names come at camera-ready.
+- 11-page body cap. Current draft is 8 pages, room to grow.
+- Ethics section and LLM Usage Statement included (ACSAC mandatory).
+- No em-dashes. Searched and confirmed clean.
+- No "X is Y, not Z" structures. Same.
+
+Taka

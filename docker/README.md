@@ -1,17 +1,19 @@
-# Docker Runner
+# docker/
 
-One image builds all three harnesses (json-c, curl, libelf), ships the patched ParseRE, and runs any of the three evaluations.
+Ben,
 
-## Building
+One Docker image builds all three harnesses and ships your patched ParseRE inside. Same container runs any of the three evaluations.
+
+## Build
 
 ```bash
 cd docker
 docker build --platform linux/amd64 -t parsere-runner -f Dockerfile .
 ```
 
-First build takes 10 to 15 minutes. Most of that is compiling curl from source (the `--without-shared` configure flag forces a static `.a` library, which ParseRE needs to avoid dynamic-linker pollution in the traces).
+First build is 10 to 15 minutes. Most of that is compiling curl from source so we get a static `libcurl.a`. Subsequent builds use the layer cache and finish in seconds.
 
-## Running
+## Run
 
 ```bash
 mkdir -p out
@@ -20,32 +22,23 @@ docker run --platform linux/amd64 --rm -v "$PWD/out:/output" parsere-runner [jso
 
 Outputs land in `out/`:
 
-- `out.dot`: the labeled CFG in Graphviz format
-- `out.svg`: rendered version, opens in any browser
+- `out.dot`: labeled CFG in Graphviz format
+- `out.svg`: rendered CFG, browseable in any browser
 - `parsere.out`: address-range to label mapping (one line per labeled basic block)
 
 ## Why `--platform linux/amd64`
 
-ParseRE traces x86-64 binaries with `qemu-x86_64` (user-mode emulation). On Apple Silicon, Docker Desktop normally runs `linux/arm64` images; we force `linux/amd64` so the harnesses are actually x86-64 binaries that QEMU user-mode can trace. The platform flag tells Docker to use Rosetta-or-QEMU emulation for the container itself, then `qemu-x86_64` runs inside it.
+I'm on an M1 Mac. Docker Desktop defaults to `linux/arm64` images on Apple Silicon. ParseRE traces x86-64 binaries with `qemu-x86_64` user-mode, so we need the container itself to be x86-64. The `--platform` flag forces that. Docker Desktop then uses Rosetta or QEMU to emulate the container, and `qemu-x86_64` runs inside that.
 
-This is slower than native execution, but the trace collection happens once per input (20 inputs for ELF, 27 for JSON, 1458 for URL). Even URL completes in under 10 minutes on an M1.
+It's slower than native but fine. URL takes around 8 minutes, JSON about 30 seconds, ELF about 10 seconds.
 
 ## Base image choice
 
-`python:3.13-bookworm`. We tried `debian:bookworm` first but it ships Python 3.11, and ParseRE's source uses `type ttuple[T] = tuple[T, ...]` syntax that only parses in 3.12+. Building Python 3.13 from source inside the container worked but added 20 minutes to every rebuild. The official Python image was easier.
+I started with `debian:bookworm` but it ships Python 3.11, and your code uses `type ttuple[T] = tuple[T, ...]` syntax from Python 3.12+. Building Python 3.13 from source inside the container added 20 minutes to every rebuild. Switched to the official `python:3.13-bookworm` image, which solved both problems.
 
-## Inspecting the image without running the full pipeline
+## Useful debugging command
 
-If you want to poke at the built harnesses or the ParseRE source directly:
-
-```bash
-docker run --platform linux/amd64 --rm -it --entrypoint /bin/bash parsere-runner
-# inside the container:
-ls /harnesses/
-ls /parsere/
-```
-
-To replay a single input through one harness manually (this is the most useful debug command):
+If something looks off, this one-liner replays a single input through the harness manually and shows the QEMU trace:
 
 ```bash
 docker run --platform linux/amd64 --rm \
@@ -57,6 +50,10 @@ docker run --platform linux/amd64 --rm \
   '
 ```
 
+I used this a lot when debugging the static-linking issue. Each `IN:` record in the trace is one basic block. If you see `_dl_init` or `_dl_relocate_object` near the top, the harness is dynamically linked and you need to rebuild it static.
+
 ## run.sh
 
-The `run.sh` script is what runs when the container starts. It picks the right harness based on the format argument, sets the ParseRE flags, and copies the output files into the mounted `/output` directory. Reading it is the fastest way to see exactly what gets invoked.
+This is the entry point. Picks the right harness from the format argument, sets the ParseRE flags, copies output into the mounted `/output` directory. Reading the script is the fastest way to see exactly what gets invoked.
+
+Taka
