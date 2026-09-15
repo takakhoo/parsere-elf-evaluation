@@ -59,7 +59,9 @@ Regenerate them with:
 
 ```bash
 cd paper/figures
-tectonic motivating.tex pipeline.tex elf-layout.tex elf-cfg-fragment.tex
+for figure in motivating pipeline elf-layout elf-cfg-fragment; do
+  tectonic "$figure.tex"
+done
 ```
 
 ## Draft conventions
