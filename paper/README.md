@@ -1,80 +1,71 @@
-# paper/
+# Paper draft
 
-Ben,
+This directory contains an IEEE-style working draft titled **“Recovering Semantics from Unknown Binaries with Known Input Formats.”** It is not identified with a specific conference or submission cycle.
 
-This is the ACSAC submission. Drop the whole folder into Overleaf and set `main.tex` as the root.
+The draft is intentionally incomplete. The committed ELF evaluation includes manual label review; URI and JSON accuracy review remains pending; Apache APR and HPACK are planned but not implemented in this artifact. Generic `TODO` markers in the LaTeX source identify those gaps.
 
-```
+```text
 paper/
-├── main.tex          top-level, \input{}s every section
-├── IEEEtran.cls      IEEE conference class (don't touch)
-├── references.bib    bibliography, 14 entries, all real
-├── figures/          TikZ source for the four new figures + their compiled PDFs
-└── sections/
-    ├── introduction.tex
-    ├── background.tex
-    ├── design.tex
-    ├── implementation.tex
-    ├── evaluation.tex
-    ├── related-work.tex
-    └── future-work.tex
+├── main.tex          top-level document
+├── main.pdf          compiled working draft
+├── IEEEtran.cls      document class
+├── references.bib    bibliography
+├── figures/          TikZ sources and compiled figures
+└── sections/         one LaTeX file per section
 ```
 
-## Compiling locally
+## Build
 
-I use tectonic because it pulls packages on demand and avoids the full TeX Live install:
+Using Tectonic:
 
 ```bash
-brew install tectonic
 cd paper
 tectonic main.tex
-# main.pdf shows up next to main.tex
 ```
 
-If you prefer the traditional toolchain:
+Using a traditional TeX installation:
 
 ```bash
 cd paper
 latexmk -pdf main.tex
 ```
 
-## Where you (and Rishav) need to fill in
+## Open items
 
-I marked every open question with an italic inline tag. Grep for them:
+List every unresolved item with:
 
 ```bash
-grep -rn '\\textit{\[BEN:\|\\textit{\[RISHAV:' sections/
+grep -RIn '\[TODO:' . --include='*.tex'
 ```
 
-As of this commit:
-- 4 `[BEN:]` markers (HPACK results, QEMU version pinning, public repo URL, HTTP Garden citation policy)
-- 2 `[RISHAV:]` markers (URI per-block TP/FP/FN, JSON per-block TP/FP/FN)
+The main open items are:
 
-When you fill one in, just delete the `\textit{[...]}` wrapper and put the real content.
+- manual TP/FP/FN review for the committed URI and JSON outputs;
+- Apache APR and HPACK implementations and measurements;
+- validation of the `-d in_asm` translation-log methodology against an execution-level trace;
+- a public artifact/license decision and final author information; and
+- final related-work, ethics, and reproducibility review.
 
-## New figures (vs. the prior draft)
+## Figures
 
-Four PDFs in `figures/`:
+The four paper figures are maintained as TikZ sources:
 
-1. **`motivating.pdf`**. Two URIs that differ only in their path subtree, used in the intro (Figure 1). Shows the idea visually before the formal design section.
-2. **`pipeline.pdf`**. Replaces the broken TikZ figure where one arrow went into an ellipse. Linear two-row layout, color-coded by data vs operation vs output.
-3. **`elf-layout.pdf`**. The 1048-byte ELF corpus layout with the three template children annotated. Goes in Section IV-E next to the ELF discussion.
-4. **`elf-cfg-fragment.pdf`**. 12 of the 68 labeled `section_header` blocks, with real addresses from `out.dot`. Shows how the labels group by function (harness vs libelf internals).
+- `motivating.tex`: URI input-difference example;
+- `pipeline.tex`: end-to-end ParseRE pipeline;
+- `elf-layout.tex`: fixed-layout ELF corpus; and
+- `elf-cfg-fragment.tex`: selected ELF-labeled blocks from the committed output.
 
-All four are hand-tuned TikZ. If you want to regenerate them:
+Regenerate them with:
 
 ```bash
 cd paper/figures
 tectonic motivating.tex pipeline.tex elf-layout.tex elf-cfg-fragment.tex
 ```
 
-## Style rules I'm following
+## Draft conventions
 
-- IEEE conference, `compsoc` option (ACSAC requires this).
-- Anonymous author block for dual-blind. Real names come at camera-ready.
-- 11-page body cap. Current draft is 8 pages, room to grow.
-- Ethics section and LLM Usage Statement included (ACSAC mandatory).
-- No em-dashes. Searched and confirmed clean.
-- No "X is Y, not Z" structures. Same.
-
-Taka
+- Use anonymous author metadata until the authors decide how the draft will circulate.
+- Do not report accuracy for an evaluation without a committed manual review.
+- Do not describe planned formats as completed evaluations.
+- Keep numerical claims synchronized with the committed templates and output files.
+- Describe this repository as source-available research code, not an open-source release, until licensing is resolved.

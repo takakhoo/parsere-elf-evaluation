@@ -3,43 +3,42 @@
 Modern reverse-engineering workflows begin with a binary, a vague sense of what it does, and a long road from there to understanding.
 When the binary parses a known input format, much of that road can be skipped: any reverse engineer who already understands the format spends most of their initial effort locating the code that implements each piece of it.
 Existing tools either annotate the input (PolyFile~\cite{sultanik2019polyfile}), require source-level instrumentation to track data flow through the parser (PolyTracker~\cite{sultanik2024polytracker}), or compare two execution traces by hand (Tenet~\cite{gaasedelen2021tenet}).
-None of them produce a labeled map of the binary's control-flow graph from a known grammar alone.
+They do not directly address the narrower task studied here: associating known grammar productions with locations in a runnable binary using corpus-level translation-log differences.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/motivating.pdf}
-\caption{Two URIs that share scheme, host, and port but differ in the \texttt{path} subtree. The trace through the parser differs in a small set of basic blocks; those blocks receive the \texttt{path} label. ParseRE generalizes this idea over a corpus of structurally varied inputs.}
+\caption{Two URIs that share scheme, host, and port but differ in the \texttt{path} subtree. A small set of parser block records differs between the runs; surviving differential records become candidates for the \texttt{path} label. ParseRE applies this idea across a structured corpus.}
 \label{fig:motivating}
 \end{figure}
 
 \textbf{The Core Idea.}
 We present \toolname, a binary-only labeling tool driven by parse-tree differencing.
-Given a grammar template for the target's input format, \toolname instantiates a corpus of structurally varied inputs, traces each one under \QEMU user-mode emulation, and compares pairs of traces whose parse trees differ in exactly one production.
-Figure~\ref{fig:motivating} sketches the idea on two URIs that differ only in their path subtree: the trace blocks that fire for Input B but not Input A get attributed to the \texttt{path} production.
-Aggregated over the full corpus and filtered for uniqueness, the result is a labeled control-flow graph in which most parser-relevant basic blocks carry the name of the grammar rule they implement.
+Given a grammar template for the target's input format, \toolname instantiates a corpus of structurally varied inputs, records each run under \QEMU user-mode emulation, and compares pairs whose parse trees differ in exactly one production.
+Figure~\ref{fig:motivating} sketches the idea on two URIs that differ only in their path subtree: translation-log records unique to Input B can be associated with the \texttt{path} production.
+Aggregated over the full corpus and filtered for uniqueness, the result is a labeled trace-derived graph whose nodes correlate with grammar rules.
 
 \textbf{Why this works in practice.}
 Parsers tend to dispatch on grammar production at the function level.
 A URI parser has a separate routine for host validation than for path canonicalization.
 A JSON parser has separate code paths for numeric tokens, string tokens, and structural tokens.
-Two inputs that differ only in their path subtree therefore tend to differ only in the basic blocks that process paths.
-\toolname exploits this regularity directly: the set of edges present in one trace but not the other tracks the production that varied between them.
+Two inputs that differ only in their path subtree may therefore differ in the code translated while processing paths.
+\toolname uses differences between consecutive translation-log record pairs as candidate evidence for the production that varied.
 
 \textbf{Why this is hard in practice.}
 Real parsers also share large amounts of code across productions, including memory allocation, error reporting, and common token tape advancement.
 Naively attributing every differential edge to a production produces a noisy label set in which most labels appear on most blocks.
-\toolname applies a two-step uniqueness filter that strips edges shared across multiple productions before reporting a label, which is the difference between unusable output and the 91.2\% strict accuracy we measure on libelf.
+\toolname applies a two-step uniqueness filter that strips record pairs shared across multiple productions before reporting a label.
+In the manually reviewed libelf run, 62 of 68 reported labels are strict true positives.
 
 \textbf{Evaluation.}
-We evaluate \toolname on four input formats spanning the Chomsky hierarchy~\cite{chomsky1956three}: URI (regular, parsed by Curl), JSON (context-free, parsed by json-c), HPACK (context-sensitive binary, parsed by nghttp2), and ELF (offset-driven binary, parsed by libelf).
-For each format we run \toolname on a real-world parser and manually inspect every labeled basic block.
-The ELF evaluation, which is fully labeled, yields 68 labeled blocks at 91.2\% accuracy.
-\textit{[BEN: HPACK numbers pending your run. RISHAV: URI/JSON per-label TP/FP/FN pending your handoff.]}
+The current artifact contains runs for URI (parsed by Curl), JSON (parsed by json-c), and ELF (parsed by libelf), while Apache APR and HPACK evaluations remain planned.
+The ELF output has been manually reviewed and yields 62 strict true positives among 68 labeled blocks (91.2\%); URI and JSON accuracy review remains incomplete.
 
 \textbf{Contributions.}
 \begin{itemize}
-    \item We introduce the first binary-only technique that transfers semantic labels from program inputs onto control-flow graph nodes and edges (Section~\ref{sec:design}).
-    \item We implement the technique in \toolname, a Python tool that requires only the target binary and a grammar template, and release it as open source.\textit{[BEN: confirm public URL for camera-ready.]}
-    \item We evaluate \toolname on real parsers (Curl, json-c, libelf, nghttp2, Apache APR) and manually inspect every label produced (Section~\ref{sec:evaluation}).
-    \item We identify a structural property of binary parsers (uniform record readers) that explains why binary formats produce fewer but higher-confidence labels than text formats, and show that \toolname captures this property without prior knowledge of it.
+    \item We describe a binary-only technique that transfers semantic labels from program inputs onto nodes and trace-derived edges (Section~\ref{sec:design}).
+    \item We implement the technique in \toolname, a Python research prototype that requires a target binary and grammar template, and provide a source-available artifact for review.
+    \item We report completed artifact runs on Curl, json-c, and libelf, including a manual review of the ELF labels (Section~\ref{sec:evaluation}).
+    \item We document how uniform record readers can leave some binary-format productions unlabeled when input changes do not alter the observed translation-log evidence.
 \end{itemize}

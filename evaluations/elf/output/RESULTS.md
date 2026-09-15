@@ -12,7 +12,7 @@
 **Library**: libelf from elfutils (Debian bookworm `libelf-dev` package)
 **Compilation**: `gcc -Wl,-z,now -no-pie -g -O0 -fno-inline -static` with `-lelf -lz`
 **Template**: 3 children: elf_header (1 variant), program_header (4 variants), section_header (5 variants)
-**Static linking**: Fully static binary (`-static` flag) to avoid dynamic-linker trace pollution
+**Static linking**: Fully static binary (`-static` flag), keeping libelf code inside the executable address range retained by the current tracer
 
 ---
 
@@ -50,21 +50,21 @@
 
 | Format | Library | Instantiations | CFG Nodes | CFG Edges | Labeled BBs | % Labeled | Productions |
 |--------|---------|---------------|-----------|-----------|-------------|-----------|-------------|
-| URI | Curl | 1,458 | 522 | 558 | 211 | 40.4% | 11 |
-| JSON | json-c | 27 | 464 | 400 | 294 | 63.4% | 6 |
+| URI | Curl | 1,458 | 522 | 558 | 191 | 36.6% | 10 |
+| JSON | json-c | 27 | 464 | 400 | 295 | 63.6% | 6 |
 | **ELF** | **libelf** | **20** | **358** | **354** | **68** | **19.0%** | **1** |
 
 ### Key Observations
 
-1. **Binary formats have uniform record readers**: Unlike text formats where syntactically distinct productions (numbers, strings, arrays in JSON; host, port, path in URLs) trigger completely different parsing code, binary formats like ELF have uniform struct-reading operations. `gelf_getphdr()` always reads 56 bytes and unpacks them identically regardless of the phdr type field.
+1. **This ELF parser uses uniform record readers**: In this run, `gelf_getphdr()` reads and unpacks the same 56-byte record regardless of the program-header type field, unlike the production-specific branches exercised by the committed JSON and URI harnesses.
 
-2. **Labels come from consumer code rather than reader code**: The 68 section_header labels are mostly in `__libelf_set_rawdata_wrlock` and the harness's symbol-table iteration loop. This is code that processes the parsed data conditionally rather than code that reads the raw bytes. The contrast highlights a fundamental difference between text and binary format parsing.
+2. **Labels come from consumer code rather than reader code in this run**: The 68 `section_header` labels are mostly in `__libelf_set_rawdata_wrlock` and the harness's symbol-table iteration loop. This code processes the parsed data conditionally rather than merely reading raw bytes. More binary parsers must be evaluated before treating this as a format-wide distinction.
 
-3. **Lower coverage expected for binary formats**: The 19.0% labeling rate vs 63.4% (JSON) and 40.4% (URL) reflects the structural simplicity of binary format parsing. Fixed-offset binary formats need much less conditional parsing logic than variable-length text formats.
+3. **Lower coverage in this binary-format case**: The 19.0% labeling rate is below the committed JSON (63.6%) and URI (36.6%) results. This supports a hypothesis that the fixed-layout ELF parser uses less production-specific branching than the two text parsers, but broader evaluation is needed before generalizing to binary formats as a class.
 
 4. **High ambiguity rate (74.8% None)**: Most of the reachable code in libelf is shared across all section types -- memory allocation (`__calloc`), data conversion, error checking. This shared code can't be attributed to any single production.
 
-5. **The result validates ParseRE's design**: ParseRE correctly identifies that section_header handling is the only structurally-varying part of the ELF parsing code. The absence of program_header labels is not a failure -- it accurately reflects that libelf's phdr reading code is type-agnostic.
+5. **The result is consistent with the template and harness design**: The section-header variants exercise conditional handling, while the program-header type variants follow the same retained `gelf_getphdr()` path. The absence of `program_header` labels is therefore expected for this corpus and harness.
 
 ---
 
@@ -80,10 +80,14 @@ From addr2line output in the dot file, the 68 section_header blocks map to these
 
 ## Reproduction
 
+From the repository root:
+
 ```bash
-cd tools/docker-runner
-docker build --platform linux/amd64 -t parsere-runner -f Dockerfile .
-docker run --platform linux/amd64 --rm -v "$PWD/output:/output" parsere-runner elf
+docker build --platform linux/amd64 -t parsere-runner -f docker/Dockerfile .
+mkdir -p reproduced/elf
+docker run --platform linux/amd64 --rm \
+  -v "$PWD/reproduced/elf:/output" \
+  parsere-runner elf
 ```
 
 Output: `out.dot`, `out.svg`, `parsere.out` in the mounted `/output` directory.

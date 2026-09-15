@@ -365,7 +365,8 @@ def generate_template_snippet(variants):
     print("# Section region varies (data + shdrs, 872 bytes).")
     print("#")
     print("# This gives 2 label dimensions: program_header and section_header.")
-    print("# Cartesian product: 4 phdr variants × 4 section variants = 16 inputs.")
+    print("# gen_template.py combines 1 header × 4 phdr regions × 5 section")
+    print("# regions to produce 20 template instantiations.")
 
 
 if __name__ == '__main__':

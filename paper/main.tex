@@ -1,6 +1,6 @@
 \documentclass[conference,compsoc]{IEEEtran}
-% ACSAC 2026 requires compsoc option. Anonymous submission handled
-% by omitting author names (not the IEEEtran anonymous flag).
+% Working paper draft using the IEEE conference layout. The venue and
+% author block should be updated only after the manuscript is complete.
 \IEEEoverridecommandlockouts
 
 \usepackage{cite}
@@ -11,6 +11,7 @@
 \usepackage{xcolor}
 \usepackage{xspace}
 \usepackage{hyperref}
+\hypersetup{hidelinks}
 \usepackage{tikz}
 \usepackage{booktabs}
 \usepackage{listings}
@@ -48,12 +49,12 @@
 \begin{abstract}
 Reverse engineers who already understand the input format a binary parses spend most of their initial effort locating the code that implements each piece of the format.
 We present \toolname, a binary-only tool that automates that step.
-Given a grammar template for the input format, \toolname instantiates a corpus of structurally varied inputs, traces each one under \QEMU user-mode emulation, compares pairs of traces whose parse trees differ in exactly one production, and attributes the differential basic blocks to that production.
-A two-step uniqueness filter removes shared code, and the result is a labeled control-flow graph in which most parser-relevant basic blocks carry the name of the grammar rule they implement.
-Unlike prior approaches, \toolname requires no source code, no compiler instrumentation, and no data-flow analysis.
-We evaluate on parsers for four formats spanning the language hierarchy: URI (regular), JSON (context-free), HPACK (context-sensitive binary), and ELF (offset-driven binary).
-On the completed ELF evaluation against libelf, manual inspection of every label yields 91.2\% strict accuracy across 68 labeled basic blocks.
-\textit{[BEN: URI and JSON accuracy rates pending Rishav's labeled SVG handoff. HPACK numbers pending your evaluation.]}
+Given a grammar template for the input format, \toolname instantiates a corpus of structurally varied inputs, records \QEMU translation logs, compares pairs whose parse trees differ in exactly one production, and attributes differential trace-derived edges to that production.
+A two-step uniqueness filter removes shared evidence, and the result is a trace-derived graph whose surviving records carry candidate grammar-rule labels.
+The prototype requires neither source code nor compiler instrumentation, although its translation-log tracer does not capture a guaranteed complete dynamic execution sequence.
+The artifact contains completed runs for Curl URI parsing, json-c, and libelf, plus planned evaluations for Apache APR and HPACK.
+On the completed ELF evaluation against libelf, manual review yields 62 strict true positives among 68 labeled basic blocks (91.2\%), with one additional marginal case.
+Accuracy review for the committed URI and JSON outputs remains future work.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -70,9 +71,8 @@ reverse engineering, binary analysis, control-flow graphs, parser analysis, inpu
 \input{sections/future-work}
 % ============================================================
 
-\section*{Acknowledgment}
-% TODO: Acknowledge Rishav's manual labeling work, Sergey's advising,
-% and any funding sources (Dartmouth CS, etc.)
+% TODO: Add contributor, advising, and funding acknowledgments after the
+% author list and publication venue are settled.
 
 \balance
 \bibliographystyle{IEEEtran}

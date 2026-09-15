@@ -1,8 +1,6 @@
 # evaluations/json/
 
-Ben,
-
-Real run of your JSON template against json-c. Used your `JSON_PARSE_TREE_TEMPLATE` as-is; I didn't touch it.
+This directory contains a committed run of the upstream `JSON_PARSE_TREE_TEMPLATE` against json-c. The template is unchanged in this snapshot.
 
 ## Target
 
@@ -15,10 +13,10 @@ Entry point: `json_tokener_parse(input)`.
 | Metric | Value |
 |--------|------:|
 | Template instantiations | 27 |
-| Pairwise comparisons | 729 |
+| Ordered comparisons | 702 |
 | CFG nodes after cleanup | 464 |
 | CFG edges | 400 |
-| Labeled basic blocks | 294 (63.4% of graph) |
+| Production-labeled basic blocks | 295 (63.6% of graph) |
 | Productions used | 6 |
 
 ## Label distribution
@@ -38,9 +36,7 @@ Entry point: `json_tokener_parse(input)`.
 
 ## TP/FP/FN status
 
-Waiting on Rishav. He ran the manual labeling pass on these results during our May 19 session and was going to send back labeled SVG text files. Until then, `parsere.out` and `out.svg` are the raw output and the per-block accuracy is unverified.
-
-The current paper has a `\textit{[RISHAV: ...]}` marker where the accuracy number goes.
+The committed `parsere.out` and `out.svg` files are raw outputs. A complete manual TP/FP/FN review is not present in this repository, so per-block accuracy remains unverified and is marked as a `TODO` in the paper draft.
 
 ## Running
 
@@ -50,5 +46,3 @@ docker run --platform linux/amd64 --rm -v "$PWD/output:/output" parsere-runner j
 ```
 
 About 30 seconds end-to-end.
-
-Taka

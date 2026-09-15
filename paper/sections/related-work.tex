@@ -1,6 +1,6 @@
 \section{Related Work}\label{sec:rel}
 
-\toolname occupies a specific niche in the binary analysis landscape: it transfers \textit{known} input-format labels onto a binary's basic blocks using only control-flow traces.
+\toolname occupies a specific niche in the binary-analysis landscape: it associates \textit{known} input-format labels with a binary's basic blocks using differential QEMU translation logs.
 We position it against three lines of prior work that are easily confused with each other but solve materially different problems.
 
 \subsection{Trace-Diffing Tools}\label{sec:rel:tenet}
@@ -11,7 +11,7 @@ They are widely used in practice for tasks like identifying why one input crashe
 These tools solve a degenerate case of \toolname's problem: $N{=}2$ inputs, no input-side annotations.
 \toolname generalizes the differential approach in two ways.
 First, we systematically generate large corpora of structurally related inputs from a grammar template (Section~\ref{sec:design:corpus}) rather than asking the user to supply two interesting inputs by hand.
-Second, we attach semantic labels to the input structure and propagate those labels to CFG edges, which produces a format-aware annotation rather than a binary ``differs / does not differ'' verdict.
+Second, we attach semantic labels to the input structure and propagate those labels to trace-derived record pairs, producing a format-aware annotation rather than a binary ``differs / does not differ'' verdict.
 
 \subsection{Input-Region Categorization}\label{sec:rel:polyfile}
 
@@ -21,12 +21,11 @@ PolyTracker~\cite{sultanik2024polytracker} extends this with whole-input dynamic
 \toolname and these tools both operate on inputs whose formats are known, but they differ in what they annotate.
 PolyFile produces an annotation of the \textit{input}.
 PolyTracker produces a data-flow mapping between input bytes and program operations.
-\toolname produces an annotation of the binary's control-flow graph itself.
+\toolname produces candidate annotations for binary locations represented in its trace-derived graph.
 The three tools are therefore composable: PolyFile can produce the labeled corpus that \toolname consumes, and \toolname's output can be cross-referenced with PolyTracker's data-flow graph for deeper understanding.
 
-A methodological distinction separates \toolname from PolyTracker: PolyTracker requires LLVM-level compiler instrumentation of the target program, which restricts it to scenarios in which source code is available.
-\toolname requires only \QEMU user-mode emulation, which is available for any binary the analyst can run.
-That covers the reverse-engineering scenario in which source is unavailable.
+A methodological distinction separates \toolname from PolyTracker: PolyTracker uses LLVM-level instrumentation, whereas \toolname observes an executable through \QEMU user-mode emulation.
+The resulting tradeoff is between richer byte-level data flow and a lighter-weight workflow that can be applied when a runnable binary and compatible emulation environment are available.
 
 \subsection{Grammar Mining and Format Recovery}\label{sec:rel:grammar}
 
@@ -43,10 +42,10 @@ The two problems are sequential rather than competing.
 An analyst would use a grammar-recovery tool to obtain a starting grammar, then use \toolname to map that grammar onto the code.
 Conflating the two would be a category error.
 
-A second methodological distinction is fundamental.
-Most grammar-recovery approaches require some form of program instrumentation, whether compiler-level for data-flow tracing~\cite{sultanik2024polytracker} or source-level for taint propagation~\cite{hoschele2016autogram}.
-That restricts them to scenarios in which source is available, which defeats the central reverse-engineering use case where the analyst typically has only a binary.
-\toolname requires only \QEMU-traceable control flow, which is available for any binary.
+A second methodological distinction concerns observation cost and evidence.
+Grammar-recovery systems span compiler instrumentation, dynamic taint analysis, and binary-level execution analysis; several, including Tupni and Polyglot, operate directly on binaries.
+\toolname does not recover an unknown grammar or track byte-level data flow.
+It instead assumes a known template and uses lightweight \QEMU translation-log differences, trading semantic depth for easier deployment on compatible runnable binaries.
 
 \subsection{Differential Testing for Parsers}\label{sec:rel:difftesting}
 
@@ -55,4 +54,4 @@ These tools surface discrepancies in protocol semantics between parser implement
 \toolname surfaces the structural correspondence between an agreed input grammar and the code that realizes it.
 They are complementary: a differential-testing tool can find that two parsers disagree, then \toolname can localize where in each parser the disagreement lives.
 
-\textit{[BEN: confirm whether the HTTP Garden citation should be included in the camera-ready (and excluded from the anonymous submission to avoid identity leakage). Currently we cite T-Reqs and ParDiff instead.]}
+% TODO: Revisit the differential-parser citation set before publication.

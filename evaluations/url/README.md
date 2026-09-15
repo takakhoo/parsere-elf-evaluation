@@ -1,8 +1,6 @@
 # evaluations/url/
 
-Ben,
-
-Real run of your URI template against curl. Used your `URI_PARSE_TREE_TEMPLATE` as-is. This is the evaluation that taught me about static linking the hard way.
+This directory contains a committed run of the upstream `URI_PARSE_TREE_TEMPLATE` against curl. The template is unchanged in this snapshot.
 
 ## Target
 
@@ -15,11 +13,13 @@ Entry point: `curl_url_set(handle, CURLUPART_URL, input, 0)`.
 | Metric | Value |
 |--------|------:|
 | Template instantiations | 1,458 |
-| Pairwise comparisons | 2,125,764 |
+| Ordered comparisons | 2,124,306 |
 | CFG nodes after cleanup | 522 |
 | CFG edges | 558 |
-| Labeled basic blocks | 211 (40.4% of graph) |
-| Productions used | 11 (including "None") |
+| Production-labeled basic blocks | 191 (36.6% of graph) |
+| Ambiguous (`None`) blocks | 21 |
+| Output entries | 212 |
+| Labels used | 10 productions + `None` |
 
 ## Label distribution
 
@@ -39,17 +39,13 @@ Entry point: `curl_url_set(handle, CURLUPART_URL, input, 0)`.
 
 `host` dominates because curl's URL parser does extensive host validation: IPv4 vs IPv6, IDNA, bracket handling, length checks.
 
-The duplicate-looking labels (`port` vs `:port`, `query` vs `?query`, etc.) come from your template's leaf naming. The colon/question/hash prefix indicates the delimiter character was included in the label. Template-design quirk; the underlying attribution works fine.
+The duplicate-looking labels (`port` vs `:port`, `query` vs `?query`, etc.) come from the template's leaf naming. The colon/question/hash prefix indicates that the delimiter character is included in the label. These labels should remain separate unless the evaluation protocol explicitly defines a merge.
 
 ## The static linking lesson
 
-First run produced zero labeled blocks. Confusing because the JSON eval had worked fine.
+The first URL run produced no parser labels because the harness used the system `libcurl.so`. The current tracer retains only translation blocks whose addresses fall inside the target executable's single executable `PT_LOAD` segment. Curl's parser code therefore lived outside the retained range and was discarded.
 
-Spent maybe an hour comparing the two before I realized: the JSON harness linked against `libjson-c.a` (static `.a` produced by the cmake build), but the URL harness was using `-lcurl` against the system `libcurl.so`. Dynamic linking adds an enormous startup phase before `main()` runs: ld.so resolves every imported symbol, traverses the DT_NEEDED list, runs the .init array. All of that runs on every input regardless of what input it is.
-
-ParseRE's useless-edges filter looks for edges that appear in every trace, on the reasonable assumption that edges that always fire aren't informative about which input feature is being processed. The dynamic linker code is exactly that. ParseRE wiped the entire graph.
-
-Fix: rebuild curl from source with `--without-shared`, link the harness against the static archive. The dynamic linker startup is still there (we still rely on libc dynamically) but it's no longer in front of the parser code.
+The fix was to rebuild curl with `--without-shared` and link its static archive into the harness. This places curl's parser code inside the target executable segment. The harness can still depend dynamically on system libraries; the important constraint is that the parser code under analysis must fall inside the address range retained by the tracer.
 
 The Dockerfile bakes this in. The whole curl build is in there.
 
@@ -57,7 +53,7 @@ This lesson is in the paper now (Section IV-C). It's also why the ELF harness us
 
 ## TP/FP/FN status
 
-Waiting on Rishav, same as JSON.
+The committed files contain 191 production-labeled blocks and 21 ambiguous blocks. A complete manual TP/FP/FN review is not present, so accuracy remains unverified.
 
 ## Running
 
@@ -66,6 +62,4 @@ mkdir -p output
 docker run --platform linux/amd64 --rm -v "$PWD/output:/output" parsere-runner url
 ```
 
-About 8 minutes end-to-end on my M1 because of the 2.1M pairwise comparisons. Most of the time is the diff computation, not QEMU tracing.
-
-Taka
+The committed Apple Silicon run took roughly eight minutes because of the 2,124,306 ordered comparisons. Most of the time was spent computing differences rather than invoking QEMU.

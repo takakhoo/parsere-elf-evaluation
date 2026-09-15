@@ -626,7 +626,7 @@ def run(
         (pt1, pt2): pt1.difference(pt2)
         for pt1, pt2 in tqdm.tqdm(
             itertools.permutations(pts, 2),
-            total=len(pts) ** 2,
+            total=len(pts) * (len(pts) - 1),
             desc="Computing parse tree diffs",
         )
     }

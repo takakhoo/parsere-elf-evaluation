@@ -1,14 +1,12 @@
 # Contributing notes
 
-Ben, this is for if I bring in Rishav or anyone else mid-stream.
-
 ## What this repo is for
 
-A working snapshot of the ParseRE paper while we finish the ACSAC 2026 submission. After submission this becomes a reproducibility artifact and eventually a PR back to `kenballus/parsere`.
+A working snapshot of a ParseRE paper draft and its current reproducibility artifact. The local implementation changes may eventually be separated into an upstream contribution after licensing and contribution requirements are clarified.
 
 ## Branch policy
 
-`main` only for now. If we end up doing parallel work close to deadline we can branch.
+Use short-lived branches for independent changes and keep `main` in a buildable state.
 
 ## Commit policy
 
@@ -20,7 +18,7 @@ fix zero-division in uniquify step when rule has empty edge set
 update Dockerfile to use python:3.13-bookworm base
 ```
 
-**No co-author trailers in any commit, ever.** This is Taka's repo and Taka's commits.
+Use co-author trailers only when they accurately reflect authorship and all named contributors agree.
 
 ## Where things go
 
@@ -38,17 +36,15 @@ update Dockerfile to use python:3.13-bookworm base
 - Debug logs from QEMU
 - Half-finished paper drafts that contradict the merged version
 - Anything outside this repo
-- Secrets (we have none)
+- Secrets or credentials
 
 ## Build before pushing
 
-If you edited `paper/`, build locally first to catch LaTeX errors:
+After editing `paper/`, build locally to catch LaTeX errors:
 
 ```bash
 cd paper
 tectonic main.tex
 ```
 
-If you don't have tectonic, drop the `paper/` folder into Overleaf and let it compile there.
-
-Taka
+If Tectonic is unavailable, upload the `paper/` folder to Overleaf and compile `main.tex` there.

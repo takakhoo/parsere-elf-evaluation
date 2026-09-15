@@ -1,14 +1,14 @@
 \section{Design}\label{sec:design}
 
 \toolname runs as a four-stage pipeline, shown in Figure~\ref{fig:overview}.
-The top row converts a grammar template into traced execution.
-The bottom row converts traced execution into a labeled CFG.
+The top row converts a grammar template into per-input translation logs.
+The bottom row converts those logs into a labeled trace-derived graph.
 Every stage except the grammar template itself is format-agnostic; adding a new format requires only writing a new template and compiling a small harness against the parser library under test.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/pipeline.pdf}
-\caption{The \toolname pipeline. Cream rectangles are data artifacts. Salmon rounded rectangles are processing steps. The green rectangle is the final output. Vertical arrows bridge the two rows: the input corpus drives both the tracing pass (top) and the pairwise diff computation (bottom), and the resulting basic-block traces feed the label-association step.}
+\caption{The \toolname pipeline. Cream rectangles are data artifacts. Salmon rounded rectangles are processing steps. The green rectangle is the final output. Vertical arrows bridge the two rows: the input corpus drives translation logging and pairwise input differencing, while the resulting block records feed label association.}
 \label{fig:overview}
 \end{figure*}
 
@@ -31,16 +31,16 @@ If two inputs differed in arbitrary ways, the trace differences between them cou
 \subsection{Execution Tracing}\label{sec:design:trace}
 
 Each input is fed to the target binary, which runs under \QEMU in user-mode emulation.
-\QEMU logs every translated basic block to a per-input trace file with the block's start address and the disassembly of its first and last instructions.
-\toolname parses each trace into an ordered block sequence, retains only blocks within the target binary's executable segment, and converts the sequence into an edge map: the set of consecutive basic-block pairs observed during execution.
+\QEMU logs translation blocks to a per-input file with each block's start address and disassembly.
+\toolname parses the records into an ordered sequence, retains only blocks within the target binary's executable segment, and converts consecutive records into a trace-derived edge map.
+These record pairs are useful differential signals, but the \texttt{-d in\_asm} translation log does not guarantee that every pair is a dynamic CFG edge.
 
-Traces from inputs that the parser rejects (non-zero exit status) are dropped.
-The CFG is built from successful parses, where the parser exercises its full grammar-handling logic.
+Logs from inputs that the harness rejects (non-zero exit status) are dropped so the graph reflects only accepted corpus members.
 
 \subsection{Label Association}\label{sec:design:assoc}
 
-For every pair of inputs $(T_i, T_j)$ whose parse trees differ in exactly one production $p$, \toolname computes the edge delta $E_i \setminus E_j$ and attributes those edges to $p$.
-Aggregating over every input pair that isolates $p$ yields the per-production edge set.
+For every pair of inputs $(T_i, T_j)$ whose parse trees differ in exactly one production $p$, \toolname computes the consecutive-record-pair delta $E_i \setminus E_j$ and associates those pairs with $p$.
+Aggregating over every input pair that isolates $p$ yields a per-production evidence set.
 
 \textbf{Two-step uniqueness filter.}
 Raw edge-to-label associations are noisy.
@@ -52,10 +52,10 @@ Many edges are shared across productions, including error-handling code and shar
     \item \textbf{Strict uniqueness.} For every production, \toolname subtracts the edges attributed to every other production. Edges that survive belong to a single production and receive its label.
 \end{enumerate}
 
-After filtering, \toolname propagates colors backward through the CFG.
+After filtering, \toolname propagates colors backward through the trace-derived graph.
 A node whose outgoing edges all carry the same label is itself labeled with that color, which captures basic blocks that serve as sole entry points into a production-specific subgraph.
 
 \subsection{Output}\label{sec:design:output}
 
-\toolname emits three artifacts: a Graphviz DOT file of the labeled CFG, a rendered SVG for browser inspection, and an address-to-label mapping the analyst can import into a disassembler.
-A companion Ghidra script consumes the address mapping and attaches per-block annotations to the disassembly listing, which lets the analyst inspect labels directly inside the reverse-engineering workflow.
+\toolname emits three artifacts: a Graphviz DOT file of the labeled trace-derived graph, a rendered SVG for browser inspection, and an address-to-label mapping.
+The mapping can be adapted for import into a disassembler, but this artifact does not yet include a dedicated import script.

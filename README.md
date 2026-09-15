@@ -1,123 +1,119 @@
-# ParseRE_ELF_etc
+# ParseRE ELF Evaluation and Paper Draft
 
-Hey Ben,
+This repository is a research-assistant extension and reproducibility snapshot for [ParseRE](https://github.com/kenballus/parsere), a binary-analysis prototype that relates structural differences in known input formats to differences in QEMU logging output. It adds an ELF evaluation, containerized harnesses for three parser libraries, evaluation artifacts, and an IEEE-style working paper draft.
 
-This is my working repo for the ELF evaluation and the ACSAC writeup. Everything I actually ran is in here, plus the patched main.py and the paper source so you can drop it straight into Overleaf or build it locally with tectonic. Figured I'd give you the whole thing rather than a bunch of attachments.
+The manuscript at [`paper/main.pdf`](paper/main.pdf) is a draft, not a submission to a specific conference. Several evaluations remain incomplete, and the results below distinguish committed measurements from planned or pending work.
 
-The current paper PDF lives at [`paper/main.pdf`](paper/main.pdf). It's 8 pages, well under the ACSAC 11-page cap. Anywhere I needed something from you or Rishav I left an italic marker in the text, easy to grep: `grep -rn "\[BEN:\|\[RISHAV:" paper/sections/`. Right now there are seven of those markers across the file.
+![First page of the paper draft](images/paper_preview.png)
 
-![Paper first page](images/paper_preview.png)
+## Repository contents
 
-## What's in here
-
-```
-ParseRE_ELF_etc/
-├── README.md             you are here
-├── paper/                IEEE LaTeX source + compiled PDF + new figures
-│   ├── main.tex
-│   ├── main.pdf          8-page draft
-│   ├── IEEEtran.cls
-│   ├── references.bib
-│   ├── figures/          new TikZ figures (pipeline, motivating, ELF layout, ELF CFG)
-│   └── sections/         one .tex per section
-├── parsere/main.py       your main.py with ELF support added
-├── harnesses/            json-c, libcurl, libelf C harnesses
-├── docker/               Dockerfile + run.sh that runs any of the three evals
+```text
+.
+├── paper/                 LaTeX source, figures, references, and compiled draft
+├── parsere/main.py        ParseRE snapshot with ELF support and an empty-edge guard
+├── harnesses/             C harnesses for json-c, curl, and libelf
+├── docker/                Reproducible Linux/amd64 build and execution environment
 ├── evaluations/
-│   ├── elf/              corpus + scripts + real outputs + per-block manual labeling
-│   ├── json/output/      real run, 294 labels
-│   ├── url/output/       real run, 211 labels
-│   └── hpack/            placeholder for your run
-├── images/               real artifacts: CFG PNGs, hexdumps, QEMU traces
-├── references/           notes on related work
-└── docs/                 contributing notes
+│   ├── elf/               Generated corpus, scripts, outputs, and manual review
+│   ├── json/              Committed json-c output; accuracy review pending
+│   ├── url/               Committed curl output; accuracy review pending
+│   └── hpack/             Planned evaluation; no results yet
+├── images/                Selected traces, graphs, and paper preview assets
+├── references/            Related-work notes
+└── docs/                  Contribution notes
 ```
 
-## What I actually did this past week
+## Implemented work
 
-Three things, in order:
+- Added a deterministic fixed-layout ELF64 corpus generator and a three-part ParseRE template covering the ELF header, program headers, and section region.
+- Added an ELF harness that exercises libelf header, section, string-table, and symbol-table APIs.
+- Added a Docker environment that builds json-c, curl, and libelf harnesses and runs the analyses under `qemu-x86_64`.
+- Added a guard for empty edge sets in the uniqueness-filtering step, preventing a `ZeroDivisionError` when a template child has only one alternative.
+- Documented the committed URI, JSON, and ELF outputs and manually reviewed every production-labeled ELF block.
 
-1. **Got ParseRE running on my machine.** It needed Docker because macOS Homebrew's QEMU doesn't ship `qemu-x86_64` user-mode. I built a single Docker image that compiles all three harnesses (json-c static `.a`, curl from source with `--without-shared`, libelf with `-static`) and runs the patched ParseRE inside the container. Image is reproducible from `docker/Dockerfile`.
+## Evaluation status
 
-2. **Ran your JSON and URL evaluations and verified them.** Both worked first try once the static-linking issue was sorted (more on that below). JSON gives 294 labels across 6 productions. URL gives 211 labels across 11. Numbers match exactly across multiple re-runs.
+ParseRE builds ordered pairs with `itertools.permutations(inputs, 2)`, so an evaluation with (N) inputs performs (N(N-1)) ordered comparisons. Counts below were checked directly against the committed templates and output files.
 
-3. **Built the ELF evaluation end-to-end.** Wrote the corpus generator, the harness, the template, ran ParseRE, manually labeled the output. 68 labeled blocks at 91.2% strict accuracy. The interesting finding is that `program_header` got zero labels because libelf reads all phdr types through the same code path. I wrote that up as a paper-worthy contrast between binary and text formats. Should be Section IV-E in the current draft.
+| Format | Parser | Inputs | Ordered comparisons | Committed output | Accuracy status |
+|---|---|---:|---:|---|---|
+| URI | curl | 1,458 | 2,124,306 | 191 production-labeled blocks + 21 ambiguous blocks | Manual TP/FP/FN review pending |
+| JSON | json-c | 27 | 702 | 295 production-labeled blocks | Manual TP/FP/FN review pending |
+| ELF | libelf | 20 | 380 | 68 production-labeled blocks + 202 ambiguous blocks | 62/68 strict true positives (91.2%); 1 additional marginal case |
+| URI | Apache APR | Planned | -- | No committed run | Pending |
+| HPACK | nghttp2 | Planned | -- | No committed implementation or run | Pending |
 
-## The static-linking lesson
-
-This burned half a day on the URL eval and I think it deserves a callout in the paper, which I added to Section IV-C. Short version: my first URL harness linked dynamically against `libcurl.so` and ParseRE produced zero labels. The dynamic linker startup runs on every input, dominates every trace, so the uniqueness filter wiped the whole graph. Fix was to rebuild curl from source with `--without-shared` and link the harness against the static archive. The ELF harness uses `-static` for the same reason. Adding to the README so nobody runs into this again.
-
-## Current evaluation status
-
-| Format | Library | Status | Labels | Accuracy | Needs |
-|--------|---------|--------|--------|----------|-------|
-| URI    | curl    | done   | 211    | pending  | Rishav's labeled SVG |
-| URI    | Apache APR | not started | -- | --   | Rishav to run |
-| JSON   | json-c  | done   | 294    | pending  | Rishav's labeled SVG |
-| HPACK  | nghttp2 | not started | -- | --   | you to run |
-| ELF    | libelf  | done   | 68     | 91.2%    | already done |
-
-## Things I need from you
-
-In rough priority order:
-
-1. **HPACK numbers.** Anywhere convenient drop them into `evaluations/hpack/output/` with a README and I'll integrate. The paper has a placeholder section ready to fill in.
-2. **A second pair of eyes on the related-work section.** I followed the framing from our May 19 conversation (grammar recovery vs label transfer, the LLVM dependency line for PolyTracker, Tenet as the N=2 case). I cited T-Reqs and ParDiff instead of HTTP Garden to avoid the dual-blind identity leak. If you think we should add or drop anything, let me know.
-3. **Author block.** Currently `\author{Anonymous}` in `main.tex`. We'll need to fix this for camera-ready but the dual-blind submission stays anonymous.
-4. **The Ghidra script.** Yours from the original repo wasn't included here. Worth checking whether the addr2line annotations in our `out.dot` make the plugin redundant or whether they're complementary.
+For the ELF result, the five strict false positives are inside `__gelf_getehdr_rdlock`, an ELF-header validation routine reached during section traversal. The full function-level review is in [`evaluations/elf/output/MANUAL_LABELING.md`](evaluations/elf/output/MANUAL_LABELING.md).
 
 ## Quick reproduction
 
-If you want to verify any of this from scratch:
+Build from the repository root so the Docker build context contains `harnesses/` and `parsere/`:
 
 ```bash
-git clone git@github.com:takakhoo/ParseRE_ELF_etc.git
-cd ParseRE_ELF_etc/docker
-docker build --platform linux/amd64 -t parsere-runner -f Dockerfile .
-# About 15 minutes for the first build, most of it compiling curl statically.
+git clone https://github.com/takakhoo/ParseRE_ELF_etc.git
+cd ParseRE_ELF_etc
 
-mkdir -p ../elf_out
-docker run --platform linux/amd64 --rm -v "$PWD/../elf_out:/output" parsere-runner elf
-# About 10 seconds end-to-end. Open elf_out/out.svg in a browser.
-
-# Then diff against committed output:
-diff <(sort ../elf_out/parsere.out) <(sort ../evaluations/elf/output/parsere.out)
-# Should be empty.
+docker build --platform linux/amd64 \
+  -t parsere-runner \
+  -f docker/Dockerfile .
 ```
 
-For JSON: same command, replace `elf` with `json`. About 30 seconds.
-For URL: same command, replace `elf` with `url`. About 8 minutes because of the 2.1M pairwise comparisons.
+Run the ELF evaluation and write outputs to a separate directory:
 
-## How to step through the ELF work
+```bash
+mkdir -p reproduced/elf
+docker run --platform linux/amd64 --rm \
+  -v "$PWD/reproduced/elf:/output" \
+  parsere-runner elf
+```
 
-If you want to read everything in the order I built it:
+Replace `elf` with `json` or `url` for the other implemented harnesses. The first image build can take several minutes because curl is compiled from source. The URL analysis is substantially slower than the JSON and ELF analyses because it compares more than two million ordered input pairs.
 
-1. **`evaluations/elf/scripts/gen_elf_corpus.py`**. Fixed-layout 1048-byte ELF generator. The layout diagram in the paper (Figure 3) comes from this.
-2. **`harnesses/elf_harness.c`**. 108 lines, slurps stdin, `elf_memory`, walks phdrs/shdrs/symtab. The conditional `if (shdr.sh_type == SHT_SYMTAB)` branch is what makes the section_header label fire 68 times.
-3. **`parsere/main.py` line 591**. The `ELF_PARSE_TREE_TEMPLATE` definition. Byte literals generated by `evaluations/elf/scripts/gen_template.py`. Three children: one fixed ELF header, four phdr variants, five section variants. Cartesian product to 20 inputs.
-4. **`evaluations/elf/output/parsere.out`**. Real run output. 269 lines, 68 of them labeled section_header.
-5. **`evaluations/elf/output/MANUAL_LABELING.md`**. My per-function TP/FP table. The 5 false positives are all in `__gelf_getehdr_rdlock`, an ELF header validation routine called incidentally during section traversal.
+## ELF evaluation
 
-## What changed in your main.py
+The ELF template contains three children:
 
-Three minimal edits, all upstreamable as a single PR:
+- `elf_header`: one fixed 64-byte ELF header;
+- `program_header`: four alternatives that vary the second program header type; and
+- `section_header`: five alternatives that vary populated and empty section data.
 
-1. Added `ELF_PARSE_TREE_TEMPLATE` after `URI_PARSE_TREE_TEMPLATE` (around line 591). Byte-baked from the corpus generator.
-2. Added `case "elf":` to the format switch (around line 844).
-3. Fixed a `ZeroDivisionError` in the uniquifying step (line 683). When a template has a child with exactly one alternative (like our `elf_header`), that rule produces zero edges and the original `len(e1-e2)/len(e1)` blows up. Changed to `len(e1) > 0 and ...`.
+Their Cartesian product produces 20 valid 1,048-byte ELF64 inputs. Libelf reads the program-header variants through the same basic path, so no production-specific `program_header` label survives the uniqueness filter. Section and symbol-table variations exercise conditional consumer logic, producing 68 `section_header` labels.
 
-The diff is small. Happy to send a PR against `kenballus/parsere` whenever you're ready.
+To regenerate the deterministic corpus and emitted template:
 
-## Useful links
+```bash
+python3 evaluations/elf/scripts/gen_elf_corpus.py evaluations/elf/corpus
+python3 evaluations/elf/scripts/gen_template.py
+```
 
-- Your upstream: [github.com/kenballus/parsere](https://github.com/kenballus/parsere)
-- HTTP Garden paper (for style reference): in our `papers/http-garden/` tree
-- Tectonic (what I use to compile the paper locally): [tectonic-typesetting.github.io](https://tectonic-typesetting.github.io)
-- The exact library commits we link against:
-  - json-c: `89485680314df3b4dfb2aaed14f89d212d57c119`
-  - curl: `462244447e8ba3a53b1ba9f0ba7baa52d8777daa`
-  - libelf: Debian bookworm `libelf-dev`
+See [`evaluations/elf/README.md`](evaluations/elf/README.md) for the layout and [`evaluations/elf/output/RESULTS.md`](evaluations/elf/output/RESULTS.md) for the recorded run.
 
-Let me know if anything is unclear, or if you want me to rearrange any piece of this.
+## Important limitations
 
-Taka
+- The current tracer invokes QEMU with `-d in_asm`. That log records translation blocks when QEMU translates them; it is not a complete record of every block execution. The implementation therefore constructs a trace-derived graph from translation-log order. Before publication, the method should be validated against execution callbacks such as the official [QEMU TCG plugin interface](https://www.qemu.org/docs/master/devel/tcg-plugins.html) or another dynamic tracing mechanism; QEMU's [emulation documentation](https://www.qemu.org/docs/master/about/emulation.html) provides additional context on translation blocks.
+- Only the ELF production labels have a committed manual accuracy review. URI and JSON accuracy values must remain unreported until their labeled blocks are reviewed.
+- Apache APR and HPACK are planned evaluations, not completed results.
+- The harnesses intentionally place parser code inside the target executable's address range by linking the parser libraries statically. Dynamically linked parser code falls outside the executable segment retained by the current tracer and is therefore filtered out.
+- The artifact targets Linux x86-64 user-mode emulation and assumes one executable `PT_LOAD` segment in the target binary.
+
+## Paper draft
+
+The paper source is in [`paper/`](paper/). Build it with:
+
+```bash
+cd paper
+tectonic main.tex
+```
+
+Generic `TODO` markers identify incomplete measurements and editorial decisions:
+
+```bash
+grep -RIn '\[TODO:' paper --include='*.tex'
+```
+
+The draft should not claim a complete four-format evaluation until the pending URI, JSON, Apache APR, and HPACK work is finished.
+
+## Licensing
+
+This snapshot does not currently include a license file, and the included `parsere/main.py` is derived from the upstream ParseRE repository, which also has no detected license. The code is publicly viewable for research review, but the repository should not be described as an open-source release until the authors resolve licensing.

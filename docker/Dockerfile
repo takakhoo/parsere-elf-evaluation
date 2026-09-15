@@ -2,7 +2,7 @@
 # Builds harness(es) + runs ParseRE inside a container with QEMU user-mode.
 #
 # Usage:
-#   docker build --platform linux/amd64 -t parsere-runner -f Dockerfile .
+#   docker build --platform linux/amd64 -t parsere-runner -f docker/Dockerfile .
 #   docker run --rm -v "$PWD/output:/output" parsere-runner json
 #
 FROM --platform=linux/amd64 python:3.13-bookworm
@@ -58,7 +58,7 @@ RUN gcc -Wl,-z,now -no-pie -g -O0 -fno-inline \
     /harnesses/curl_url_harness.c /harnesses/curl/lib/.libs/libcurl.a \
     -o /harnesses/curl_url_harness
 
-# ---- ELF harness (static link to avoid dynamic-linker trace pollution) ----
+# ---- ELF harness (static link keeps libelf in the retained executable range) ----
 COPY harnesses/elf_harness.c /harnesses/elf_harness.c
 RUN gcc -Wl,-z,now -no-pie -g -O0 -fno-inline -static \
     /harnesses/elf_harness.c -lelf -lz \

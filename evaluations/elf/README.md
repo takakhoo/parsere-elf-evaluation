@@ -1,17 +1,15 @@
 # evaluations/elf/
 
-Ben,
-
-This is the ELF evaluation I built for the paper. The whole thing is reproducible: regenerate the corpus, rebuild the template, rerun ParseRE, and the numbers come out identical.
+This directory contains the ELF evaluation developed for the paper draft. The corpus and template generators are deterministic, and the committed run includes raw output plus a manual review of every production-labeled block.
 
 ## What landed here
 
 ```
 elf/
-├── README.md              you are here
+├── README.md              evaluation documentation
 ├── corpus/                8 ELF64 files, 1048 bytes each, all valid per readelf
 ├── output/                real ParseRE output from May 21
-│   ├── parsere.out        269 lines, 68 of them labeled section_header
+│   ├── parsere.out        270 records: 68 section_header, 202 None
 │   ├── out.dot            full CFG with addr2line annotations
 │   ├── out.svg            rendered CFG, open in a browser
 │   ├── RESULTS.md         summary with tables and observations
@@ -34,6 +32,7 @@ elf/
 | Ambiguous (`None`) blocks | 202 |
 | True positives | 62 |
 | False positives | 5 |
+| Marginal cases | 1 |
 | **Strict accuracy** | **91.2%** |
 
 Per-function TP/FP breakdown is in `output/MANUAL_LABELING.md`.
@@ -61,7 +60,7 @@ Every file passes `readelf -a` validation.
 
 ## How the template plugs in
 
-The trick with binary formats is that you can't write byte alternatives by hand. The offsets in the ELF header have to match the actual positions of the content, the section header table has to point at real sections, etc. So I wrote a generator (`scripts/gen_template.py`) that:
+The ELF byte alternatives are generated rather than handwritten because header offsets must match the content layout and the section header table must point at valid regions. The template generator (`scripts/gen_template.py`):
 
 1. Generates every corpus variant in memory.
 2. Slices each variant into three regions: header (0-64), program headers (64-176), section region (176-1048).
@@ -81,7 +80,7 @@ docker run --platform linux/amd64 --rm \
   parsere-runner elf
 ```
 
-About 10 seconds end-to-end on my M1. Most of it is QEMU startup for the 20 inputs.
+The committed Apple Silicon run completed in roughly 10 seconds; most of that time was QEMU startup for the 20 inputs.
 
 ## Reproducing the corpus
 
@@ -95,24 +94,22 @@ python3 gen_template.py                 # writes elf_template.py
 
 The generator is deterministic so byte literals should match exactly. If they ever drift, update the `ELF_PARSE_TREE_TEMPLATE` in `parsere/main.py` and rebuild the Docker image.
 
-## The `program_header` mystery (resolved)
+## Why `program_header` is unlabeled
 
-When I first ran this I expected `program_header` to get labels because I had four variants of it. Got zero. Spent half an hour double-checking the template before I figured it out:
+The `program_header` production has four variants but receives no labels because:
 
-Libelf reads program headers with `gelf_getphdr`. It's a single function that unpacks 56 bytes into a struct. The `p_type` field gets stored in the struct, but libelf doesn't branch on it during parsing. So the trace through `gelf_getphdr` is byte-for-byte identical for PT_NOTE, PT_INTERP, PT_DYNAMIC, and PT_NULL inputs. No trace difference, no labels.
+Libelf reads program headers with `gelf_getphdr`, which unpacks 56 bytes into a struct. The `p_type` field is stored in the struct, but libelf does not branch on it during parsing. The retained translation-log evidence through `gelf_getphdr` is therefore identical for PT_NOTE, PT_INTERP, PT_DYNAMIC, and PT_NULL inputs, leaving no differential record to label.
 
 Section types are different because the harness has a real conditional on `sh_type`. Variants with a real symtab take the symtab-walking branch and execute `gelf_getsym` and `elf_strptr`. Variants where the symtab is empty skip the branch.
 
-This generalizes to a paper-worthy observation that ended up in Section IV-E: text formats have per-production parser routines, binary formats have uniform record readers, and the labels appear where conditional consumer code lives.
+This result motivates a hypothesis in the paper draft: when a fixed-layout parser uses uniform record readers, production labels may appear mainly where conditional consumer code operates on the parsed structures. Broader evaluation is needed before generalizing beyond this harness and library.
 
 ## Why the corpus is small
 
 The other evaluations have much larger corpora (JSON 27, URL 1458). My ELF corpus is 20. A larger corpus would require more orthogonal variation dimensions, and the obvious candidates each break the fixed-layout invariant:
 
-- Varying `e_machine` would require multi-architecture support that our harness doesn't have.
+- Varying `e_machine` would require multi-architecture support beyond the current harness.
 - Varying the number of program headers would change the offset of the section data.
 - Varying `e_class` (32-bit vs 64-bit) would require completely different struct layouts.
 
-For the paper's cross-format comparison, 20 instantiations is enough to demonstrate the binary vs text contrast. Larger corpora are natural follow-up work.
-
-Taka
+The 20-instantiation corpus demonstrates one contrast with the committed text-format runs. A larger and more varied binary corpus is necessary before making broader claims about binary parsers.

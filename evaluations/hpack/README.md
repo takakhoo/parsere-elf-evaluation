@@ -1,8 +1,6 @@
 # evaluations/hpack/
 
-Ben,
-
-This folder is a placeholder for your HPACK evaluation. The cross-format table in the paper points here.
+This directory is a design note for a planned HPACK evaluation. It contains no implementation, harness, raw output, or measured result.
 
 ## What HPACK is (for context)
 
@@ -23,18 +21,15 @@ For ParseRE this should be a stress test: offset-driven binary like ELF, but wit
 - `raw_string`: non-compressed string
 - `variable_length_int`: the integer encoding used throughout
 
-## When you have results
+## Expected artifact layout
 
 Drop them into:
 
-- `evaluations/hpack/harness/hpack_harness.c` (or wherever you put the source)
+- `evaluations/hpack/harness/hpack_harness.c` or another documented harness path
 - `evaluations/hpack/output/parsere.out`, `out.dot`, `out.svg`
 - Add a `case "hpack":` in `parsere/main.py` switch
-- Add a row to `paper/sections/evaluation.tex` Table 3
-- I'll fill in the `\textit{[BEN:]}` markers in `paper/sections/evaluation.tex` Section IV-D
+- Update the corresponding pending row in `paper/sections/evaluation.tex`
 
 ## A suggestion
 
-For ELF I needed a Python generator because of the interdependent offsets. For HPACK you probably won't. HPACK is a stream rather than a layout-driven format, so you can write the byte alternatives directly into the `HPACK_PARSE_TREE_TEMPLATE` definition in `main.py`.
-
-Taka
+ELF requires a Python generator because of interdependent offsets. HPACK is stream-oriented rather than layout-driven, so a first implementation may be able to express byte alternatives directly in an `HPACK_PARSE_TREE_TEMPLATE`; that design remains to be validated.

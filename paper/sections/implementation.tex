@@ -13,7 +13,8 @@ At internal nodes, alternatives are ordered tuples of child templates.
 \toolname recursively enumerates every combination through Cartesian product, producing a set of concrete parse trees that serialize to byte strings.
 
 \textbf{Branching factor sets corpus size.}
-The JSON template yields 27 instantiations (729 pairwise comparisons), the URI template yields 1{,}458 instantiations (over two million pairwise comparisons), and the ELF template yields 20 instantiations (380 pairwise comparisons).
+The implementation compares ordered pairs of distinct inputs, so $N$ instantiations produce $N(N-1)$ comparisons.
+The JSON template yields 27 instantiations (702 comparisons), the URI template yields 1{,}458 instantiations (2{,}124{,}306 comparisons), and the ELF template yields 20 instantiations (380 comparisons).
 The text-format templates are larger because the underlying grammars have more independently varying productions.
 Each input remains small (under one kilobyte for the text formats, exactly 1{,}048 bytes for ELF), which keeps trace collection practical even when the input count grows.
 
@@ -26,13 +27,16 @@ No changes to the core pipeline are needed.
 \subsection{Tracing with QEMU}\label{sec:impl:qemu}
 
 Each input is fed to the target via standard input.
-\toolname invokes \QEMU with the basic-block logging flag enabled and a per-input output path, parses the resulting log with a regular expression that matches \QEMU's basic-block records, and constructs a basic-block object per record.
+\toolname invokes \QEMU with \texttt{-d in\_asm} and a per-input output path, parses the resulting translation log with a regular expression that matches \QEMU's block records, and constructs a basic-block object per record.
 Only blocks within the target binary's executable segment are retained; blocks from the dynamic linker and the \QEMU runtime itself are discarded by checking each address against the target's PT\_LOAD program header.
 
-Traces for inputs with non-zero exit status are excluded.
-This ensures that the CFG is built from successful parses, where the parser exercises its full grammar-handling logic.
+Logs for inputs with non-zero exit status are excluded so the constructed graph reflects accepted corpus members.
 
-\textit{[BEN: the basic-block log format depends on the QEMU version. The current regex was written against QEMU 8.x as packaged on Debian bookworm. Worth pinning the version in the artifact description, or adding a fallback regex for older versions.]}
+\textbf{Tracing limitation.}
+\texttt{-d in\_asm} reports blocks when translated, and QEMU's translation cache may suppress records for later executions of an already translated block.
+The current adjacency construction therefore captures order in the translation log, not a guaranteed complete sequence of dynamic control transfers.
+The reported associations should be interpreted as differential, trace-derived evidence.
+A stronger implementation would collect execution events with QEMU's TCG plugin interface and validate each edge against a conventional dynamic CFG.
 
 \subsection{Target Harnesses}\label{sec:impl:harness}
 
@@ -40,9 +44,10 @@ For each parser under test we compile a small C harness that links against the p
 Harnesses are typically twenty to thirty lines.
 The ELF harness is longer (around one hundred lines) because libelf exposes the parser as a family of small calls (one per program header, one per section header, one per symbol) rather than a single top-level entry point, and the harness must call all of them to exercise the full structure.
 
-\textbf{Static linking is required.}
-Dynamic linking caused the first URL evaluation to produce zero labels: the dynamic linker startup ran on every input, dominated every trace, and \toolname's uniqueness filter consequently wiped the entire graph as shared code.
-Rebuilding curl from source with \texttt{--without-shared} produced a static archive that the harness could link against, which restored the trace differential signal.
+\textbf{Static linking is required by the current address filter.}
+\toolname retains blocks only when their addresses fall inside the target executable's selected executable \texttt{PT\_LOAD} segment.
+With a dynamically linked harness, parser-library code lives in a separate shared object and is filtered out, which caused the initial URL run to produce no useful labels.
+Rebuilding curl from source with \texttt{--without-shared} placed its parser code inside the harness executable and restored the differential signal.
 Every harness in the current evaluation links statically (libelf via the \texttt{-static} GCC flag, json-c via its \texttt{.a} archive from a CMake build, curl via its source-built static archive).
 
 \textbf{Compilation flags.}
@@ -56,6 +61,6 @@ The current implementation includes grammar templates for four formats:
 \begin{itemize}
     \item \textbf{URI} (regular): scheme, authority (userinfo, host, port), path, query, fragment, per RFC~3986.
     \item \textbf{JSON} (context-free): objects, arrays, strings, numbers, booleans, null, per RFC~8259.
-    \item \textbf{HPACK} (context-sensitive binary): indexed headers, literal headers with and without Huffman compression, per RFC~7541. \textit{[BEN: describe your template choices here when ready.]}
+    \item \textbf{HPACK} (context-sensitive binary): planned support for indexed headers, literal headers, Huffman strings, and variable-length integers, per RFC~7541. The current artifact does not contain a completed HPACK run.
     \item \textbf{ELF} (offset-driven binary): one fixed ELF header, four program-header variants, five section variants. Each instantiation is a valid 1{,}048-byte ELF64 file constructed by a Python generator that keeps the inter-field offsets consistent across all twenty corpus members.
 \end{itemize}

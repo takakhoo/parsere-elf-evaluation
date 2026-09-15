@@ -21,21 +21,18 @@ Extending to hierarchical templates (labeling not just ``string'' but ``string-e
 
 \toolname is a defensive reverse-engineering tool that annotates binary code with format-semantic labels.
 It does not discover, create, or exploit vulnerabilities.
-All target parsers used in our evaluation are open-source software analyzed with the knowledge and consent of the authors.
-No proprietary or classified binaries were analyzed.
+All evaluated targets are publicly available software projects; the artifact contains no proprietary or classified binaries.
+The present repository does not include a license file, so it should be treated as source-available for research review rather than as a licensed open-source release.
 
 \section{LLM Usage Statement}\label{sec:llm}
 
-Large language models were used for editorial purposes in preparing this manuscript.
-All outputs were inspected by the authors to ensure accuracy and originality.
-No LLM was used in the design, implementation, or evaluation of \toolname itself.
+Large language models were used for editorial assistance and exploratory checks while preparing this draft.
+The committed ELF label counts reported here were manually reviewed; no unverified model-generated measurement is presented as a final result.
 
 \section{Conclusion}\label{sec:conclusion}
 
-We presented \toolname, a technique for transferring known input-format labels onto the control-flow graph of an unknown binary.
-By systematically generating structurally varied inputs, tracing them under \QEMU, and attributing control-flow deltas to parse-tree deltas, \toolname produces a semantically meaningful map of parser code without requiring source code, compiler instrumentation, or data-flow analysis.
+We presented \toolname, a technique for associating known input-format labels with locations in an unknown binary.
+By systematically generating structurally varied inputs, recording their \QEMU translation logs, and associating record-pair deltas with parse-tree deltas, \toolname produces candidate semantic annotations without requiring source code, compiler instrumentation, or data-flow analysis.
 
-We evaluated \toolname on four formats spanning the language hierarchy (URI, JSON, HPACK, and ELF), demonstrating high accuracy through exhaustive manual inspection of every label.
-\toolname is fast, lightweight, and integrates directly into existing reverse-engineering workflows.
-
-\textit{[BEN: final accuracy summary sentence pending. Once Rishav's labels and your HPACK numbers are in, we can say something like ``Across all four formats, \toolname achieves an average accuracy of X\%, with trace-collection times under Y seconds per format.'']}
+The artifact contains completed runs for URI, JSON, and ELF; manual validation is complete only for ELF, where 62 of 68 labels are strict true positives and one additional label is marginal.
+These results support continued study, but broader accuracy claims require review of the URI and JSON outputs, completion of the planned APR and HPACK runs, and replacement or validation of the translation-log tracer with dynamic execution events.
