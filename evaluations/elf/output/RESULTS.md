@@ -22,8 +22,8 @@
 |--------|-------|
 | Template instantiations | 20 |
 | Pairwise comparisons | 380 |
-| CFG nodes (after cleanup) | 358 |
-| CFG edges | 354 |
+| Trace-derived graph nodes | 358 |
+| Consecutive-record edges | 354 |
 | **Labeled basic blocks** | **68** (19.0% of graph) |
 | Ambiguous (None) blocks | 202 |
 | Productions used | 1 (`section_header` only) |
@@ -48,7 +48,7 @@
 
 ### Comparison with Other Evaluations
 
-| Format | Library | Instantiations | CFG Nodes | CFG Edges | Labeled BBs | % Labeled | Productions |
+| Format | Library | Instantiations | Graph Nodes | Record-Pair Edges | Labeled BBs | % Labeled | Productions |
 |--------|---------|---------------|-----------|-----------|-------------|-----------|-------------|
 | URI | Curl | 1,458 | 522 | 558 | 191 | 36.6% | 10 |
 | JSON | json-c | 27 | 464 | 400 | 295 | 63.6% | 6 |

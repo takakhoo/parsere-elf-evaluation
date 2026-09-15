@@ -31,7 +31,7 @@
 
 ## False Positive Analysis
 
-The 5 FP blocks all sit in `__gelf_getehdr_rdlock`. This function reads the ELF header, but it is called internally by libelf as a validation step during section traversal: `elf_nextscn` and `gelf_getshdr` re-validate the ELF header before accessing section data. The trace difference arises because some section configurations cause this validation to take different branches (for example, checking `e_shnum` against the actual number of populated sections).
+The 5 FP blocks all sit in `__gelf_getehdr_rdlock`. This function reads the ELF header, but it is called internally by libelf as a validation step during section traversal: `elf_nextscn` and `gelf_getshdr` re-validate the ELF header before accessing section data. The translation-log difference arises because some section configurations cause this validation to take different branches (for example, checking `e_shnum` against the actual number of populated sections).
 
 This is a reasonable FP. The code *is* reached through section processing, but it *implements* ELF header validation rather than section header parsing. An analyst using ParseRE would benefit from knowing this is section-related code, even though the precise label is wrong.
 

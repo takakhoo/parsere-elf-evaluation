@@ -1,6 +1,6 @@
 % Motivating example figure for the introduction.
 % Two URIs with parse trees that differ in one production.
-% The trace diff is attributable to the differing production.
+% The translation-log difference provides candidate evidence for the differing production.
 \documentclass[tikz,border=10pt]{standalone}
 \usepackage{tikz}
 \usepackage{xcolor}
@@ -75,16 +75,16 @@
 % BRIDGE between columns
 % ============================================================
 \node[font=\bfseries\footnotesize, align=center] (qemu) at (6.6, 5.6)
-  {trace each input\\under \textsc{qemu}};
+  {log each input\\under \textsc{qemu}};
 
 \draw[arrow, line width=0.9pt, dashed] (4.7, 3.0) -- (6.0, 3.0);
 \node[cflabel] at (5.35, 3.15) {compare};
 
 % ============================================================
-% RIGHT COLUMN: CFG fragment with labeled blocks
+% RIGHT COLUMN: trace-derived graph fragment with labeled blocks
 % ============================================================
 
-\node[font=\bfseries\small, anchor=west] at (5.55, 4.7) {Resulting labeled CFG fragment};
+\node[font=\bfseries\small, anchor=west] at (5.55, 4.7) {Candidate labeled graph fragment};
 
 \node[bb] (bb0) at (6.6, 4.0) {0x4014f0\\\_start};
 \node[bb] (bb1) at (6.6, 3.2) {0x418d10\\\_\_libc\_start\_main};
@@ -101,10 +101,10 @@
 \draw[arrow] (bbp1) -- (bbpath);
 \draw[arrow] (bbpath) -- (bbpath2);
 
-% Legend below CFG
+% Legend below the trace-derived graph
 \node[cflabel, draw=black!30, fill=white, rounded corners=2pt, inner sep=4pt,
       anchor=north, align=left] at (6.6, -0.1)
-  {trace difference $\Rightarrow$ \texttt{path} label on the green blocks};
+  {record-pair difference $\Rightarrow$ candidate \texttt{path} label};
 
 \end{tikzpicture}
 \end{document}

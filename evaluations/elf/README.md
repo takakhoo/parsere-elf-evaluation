@@ -10,8 +10,8 @@ elf/
 ├── corpus/                8 ELF64 files, 1048 bytes each, all valid per readelf
 ├── output/                real ParseRE output from May 21
 │   ├── parsere.out        270 records: 68 section_header, 202 None
-│   ├── out.dot            full CFG with addr2line annotations
-│   ├── out.svg            rendered CFG, open in a browser
+│   ├── out.dot            trace-derived graph with addr2line annotations
+│   ├── out.svg            rendered graph, viewable in a browser
 │   ├── RESULTS.md         summary with tables and observations
 │   └── MANUAL_LABELING.md per-function TP/FP breakdown
 └── scripts/
@@ -26,8 +26,8 @@ elf/
 |--------|------:|
 | Template instantiations | 20 (1 × 4 × 5) |
 | Pairwise comparisons | 380 |
-| CFG nodes after cleanup | 358 |
-| CFG edges | 354 |
+| Trace-derived graph nodes | 358 |
+| Consecutive-record edges | 354 |
 | Labeled basic blocks | 68 (all `section_header`) |
 | Ambiguous (`None`) blocks | 202 |
 | True positives | 62 |

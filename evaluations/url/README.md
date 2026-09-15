@@ -14,8 +14,8 @@ Entry point: `curl_url_set(handle, CURLUPART_URL, input, 0)`.
 |--------|------:|
 | Template instantiations | 1,458 |
 | Ordered comparisons | 2,124,306 |
-| CFG nodes after cleanup | 522 |
-| CFG edges | 558 |
+| Trace-derived graph nodes | 522 |
+| Consecutive-record edges | 558 |
 | Production-labeled basic blocks | 191 (36.6% of graph) |
 | Ambiguous (`None`) blocks | 21 |
 | Output entries | 212 |

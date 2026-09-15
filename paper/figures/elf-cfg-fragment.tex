@@ -1,4 +1,4 @@
-% Real CFG fragment from the ELF evaluation.
+% Trace-derived graph fragment from the ELF evaluation.
 % Addresses, function names, and labels are taken from out.dot produced
 % by ParseRE on May 21, 2026. All 12 blocks shown received the
 % section_header label.
@@ -57,7 +57,7 @@
 \draw[arrow] (s2) -- (s3);
 \draw[arrow] (s3) -- (s4);
 
-% Cross-group arrows showing real edges from out.dot
+% Cross-group arrows showing consecutive-record relationships from out.dot
 \draw[arrow, dashed] (h4.south) to[bend left=15] (l1.north east);
 \draw[arrow, dashed] (l4.south) to[bend left=15] (s1.north east);
 
@@ -76,7 +76,7 @@
 % Title and caption
 \node[font=\bfseries, anchor=west] at (-3.5, 5.6) {12 of the 68 basic blocks labeled \texttt{section\_header} by ParseRE};
 \node[caption, anchor=west, text width=14cm, align=left] at (-3.5, 0.3)
-  {Solid arrows: control-flow edges within a function. Dashed arrows: cross-function call edges from the harness into libelf and from libelf section-data setup into name lookups. Addresses and function names are pulled directly from our \texttt{out.dot}.};
+  {Arrows reproduce consecutive-record relationships in the committed \texttt{out.dot}. Dashed styling distinguishes relationships that cross function boundaries; it does not independently establish dynamic call edges.};
 
 \end{tikzpicture}
 \end{document}

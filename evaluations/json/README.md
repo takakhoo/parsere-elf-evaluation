@@ -14,8 +14,8 @@ Entry point: `json_tokener_parse(input)`.
 |--------|------:|
 | Template instantiations | 27 |
 | Ordered comparisons | 702 |
-| CFG nodes after cleanup | 464 |
-| CFG edges | 400 |
+| Trace-derived graph nodes | 464 |
+| Consecutive-record edges | 400 |
 | Production-labeled basic blocks | 295 (63.6% of graph) |
 | Productions used | 6 |
 

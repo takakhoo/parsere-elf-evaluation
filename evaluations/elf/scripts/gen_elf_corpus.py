@@ -4,7 +4,7 @@ Generate minimal ELF64 corpus files for ParseRE's ELF evaluation.
 
 Each generated file is a valid ELF64 that libelf can parse.
 The files differ in controlled structural ways so that ParseRE's
-pairwise trace differencing can identify which code handles which
+pairwise translation-log differencing can identify candidate code for each
 ELF production (program headers, section headers, symbol tables, etc.).
 
 Layout (all variants use the same fixed offsets):

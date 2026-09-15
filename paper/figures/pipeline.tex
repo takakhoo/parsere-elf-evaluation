@@ -37,14 +37,14 @@
 \node[data] (template) {Grammar\\Template};
 \node[op, right=of template] (inst) {Instantiate};
 \node[data, right=of inst] (corpus) {Input Corpus\\\footnotesize $n$ parse trees};
-\node[op, right=of corpus] (trace) {Trace under\\QEMU};
-\node[data, right=of trace] (traces) {Basic-block\\traces};
+\node[op, right=of corpus] (trace) {Log under\\QEMU};
+\node[data, right=of trace] (traces) {Translation-block\\records};
 
 % Row 2: analysis pipeline (positioned below corpus)
 \node[op, below=1.4cm of corpus] (diff) {Pairwise\\parse-tree diffs};
-\node[op, right=of diff] (assoc) {Associate labels\\to edge deltas};
+\node[op, right=of diff] (assoc) {Associate labels\\to record-pair deltas};
 \node[op, right=of assoc] (filter) {Two-step\\uniqueness filter};
-\node[outdata, right=of filter] (result) {Labeled\\CFG};
+\node[outdata, right=of filter] (result) {Labeled\\trace-derived graph};
 
 % Horizontal arrows row 1
 \draw[arrow] (template) -- (inst);

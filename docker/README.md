@@ -21,8 +21,8 @@ docker run --platform linux/amd64 --rm -v "$PWD/out:/output" parsere-runner [jso
 
 Outputs land in `out/`:
 
-- `out.dot`: labeled CFG in Graphviz format
-- `out.svg`: rendered CFG, browseable in any browser
+- `out.dot`: labeled trace-derived graph in Graphviz format
+- `out.svg`: rendered trace-derived graph, viewable in a browser
 - `parsere.out`: address-range to label mapping (one line per labeled basic block)
 
 ## Why `--platform linux/amd64`

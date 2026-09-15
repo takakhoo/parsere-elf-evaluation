@@ -6,7 +6,7 @@
 Extending to other architectures requires adapting the regular expression that extracts basic-block boundaries from \QEMU's log output.
 
 \textbf{Differential fuzzing guided by labels.}
-Once \toolname has labeled a parser's CFG, the labels provide a natural coverage metric for format-aware fuzzing.
+Once \toolname has labeled a parser's trace-derived graph, the labels could provide a coverage heuristic for format-aware fuzzing.
 A fuzzer could prioritize inputs that exercise under-explored grammar productions, using \toolname's labels as a coverage map.
 
 \textbf{Grammar mining integration.}
