@@ -51,8 +51,8 @@ For the ELF result, the five strict false positives are inside `__gelf_getehdr_r
 Build from the repository root so the Docker build context contains `harnesses/` and `parsere/`:
 
 ```bash
-git clone https://github.com/takakhoo/ParseRE_ELF_etc.git
-cd ParseRE_ELF_etc
+git clone https://github.com/takakhoo/parsere-elf-evaluation.git
+cd parsere-elf-evaluation
 
 docker build --platform linux/amd64 \
   -t parsere-runner \
