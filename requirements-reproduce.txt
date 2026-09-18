@@ -1,0 +1,4 @@
+networkx==3.6.1
+pydot==4.0.1
+pyelftools==0.33
+tqdm==4.70.1

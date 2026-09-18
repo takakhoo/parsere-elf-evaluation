@@ -71,7 +71,7 @@ COPY parsere/main.py /parsere/main.py
 RUN pip install --no-cache-dir \
     networkx pydot pyelftools tqdm cxxfilt
 
-COPY run.sh /parsere/run.sh
+COPY docker/run.sh /parsere/run.sh
 RUN chmod +x /parsere/run.sh
 
 ENTRYPOINT ["/parsere/run.sh"]

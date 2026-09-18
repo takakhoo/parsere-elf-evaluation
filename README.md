@@ -48,6 +48,37 @@ For the ELF result, the five strict false positives are inside `__gelf_getehdr_r
 
 ## Quick reproduction
 
+### Fast offline fixture audit (Python 3.13)
+
+```sh
+python3.13 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-reproduce.txt
+python -m unittest discover -s tests -v
+python reproduce_fixtures.py
+```
+
+The [committed manifest](results/fixtures.json) hashes all 20 generated inputs
+and independently checks their section structures with pyelftools. It exposes
+an important limitation: **four `no_strtab` combinations retain a symbol table
+linked to a null section**, which pyelftools rejects. These are preserved as
+historical parser-tolerance fixtures, not advertised as universally valid ELF
+files. The other 16 pass this section-walking check. None is meant to execute.
+
+Three regression tests cover generator/template equality, translation-record
+parsing, and cleanup after a bounded tracer timeout. Linux CI also rebuilds
+the ELF harness and runs all 20 inputs under QEMU; fresh graph artifacts are
+uploaded separately from historical outputs. New builds can have different
+addresses/counts; old manual precision labels do not automatically transfer.
+The Docker daemon was unavailable for a local end-to-end rerun.
+
+The tracer now has a 30-second per-input timeout and guaranteed temporary-log
+cleanup. The harness rejects zero symbol-entry sizes and over-capacity input;
+the Docker runner's build-context copy path is corrected. These changes are
+robustness work, not proof that arbitrary binaries are safe to execute.
+
+### Full historical environment
+
 Build from the repository root so the Docker build context contains `harnesses/` and `parsere/`:
 
 ```bash
@@ -78,7 +109,7 @@ The ELF template contains three children:
 - `program_header`: four alternatives that vary the second program header type; and
 - `section_header`: five alternatives that vary populated and empty section data.
 
-Their Cartesian product produces 20 valid 1,048-byte ELF64 inputs. Libelf reads the program-header variants through the same basic path, so no production-specific `program_header` label survives the uniqueness filter. Section and symbol-table variations exercise conditional consumer logic, producing 68 `section_header` labels.
+Their Cartesian product produces 20 1,048-byte ELF64 fixtures, including the four malformed symbol/string-table combinations noted above. In the historical run, libelf reads the program-header variants through the same basic path, so no production-specific `program_header` label survives the uniqueness filter. Section and symbol-table variations exercise conditional consumer logic, producing 68 `section_header` labels.
 
 To regenerate the deterministic corpus and emitted template:
 

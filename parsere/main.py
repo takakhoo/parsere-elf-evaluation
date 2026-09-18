@@ -7,6 +7,7 @@ import uuid
 import os
 import copy
 import re
+import tempfile
 
 from collections import defaultdict
 from dataclasses import dataclass
@@ -109,9 +110,13 @@ QEMU_TRACE_BB_PAT: Pattern = re.compile(
 class QEMUTracer:
     qemu: Path
     target: Path
+    timeout: float = 30.0
 
     def __post_init__(self: Self) -> None:
-        assert self.qemu.is_file() and self.target.is_file()
+        if not self.qemu.is_file() or not self.target.is_file():
+            raise ValueError("QEMU and target must be existing files")
+        if not 0 < self.timeout <= 3600:
+            raise ValueError("Timeout must be in (0, 3600]")
 
     @functools.cache
     def get_executable_segment(self: Self) -> Segment:
@@ -133,27 +138,29 @@ class QEMUTracer:
         return range(base_addr, base_addr + exec_segment["p_memsz"])
 
     def trace(self: Self, data: bytes) -> TraceResult:
-        tempfile: str = f"/tmp/{uuid.uuid4()}"
-        completed_process: CompletedProcess
-        completed_process = subprocess.run(
-            [str(self.qemu), "-D", tempfile, "-d", "in_asm", str(self.target)],
-            input=data,
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            check=False,
-        )
-        trace: list[BasicBlock] = []
-        with open(tempfile, "rb") as f:
-            for m in re.finditer(QEMU_TRACE_BB_PAT, f.read()):
-                end_addr: int = int(
-                    m["end_addr"] if m["end_addr"] is not None else m["start_addr"], 16
-                )
-                trace.append(BasicBlock(int(m["start_addr"], 16), end_addr))
-        os.remove(tempfile)
+        # TemporaryDirectory cleans up on success, failed launches and timeouts.
+        # Only run trusted local harnesses; a timeout is not a sandbox.
+        with tempfile.TemporaryDirectory(prefix="parsere-trace-") as work:
+            log = Path(work) / "trace.log"
+            completed_process = subprocess.run(
+                [str(self.qemu), "-D", str(log), "-d", "in_asm", str(self.target)],
+                input=data, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                check=False, timeout=self.timeout,
+            )
+            trace = parse_translation_log(log.read_bytes())
         return TraceResult(
             tuple(bb for bb in trace if bb.start in self.get_executable_range()),
             completed_process.returncode,
         )
+
+
+def parse_translation_log(data: bytes) -> list[BasicBlock]:
+    """Parse translation records; these are NOT complete execution traces."""
+    trace = []
+    for m in re.finditer(QEMU_TRACE_BB_PAT, data):
+        end = m['end_addr'] if m['end_addr'] is not None else m['start_addr']
+        trace.append(BasicBlock(int(m['start_addr'],16), int(end,16)))
+    return trace
 
 
 def is_frozenset_bytes(x: Any) -> TypeGuard[frozenset[bytes]]:
@@ -621,7 +628,7 @@ def run(
     qemu_path: Path,
     addr2line_path: Path | None = None,
 ) -> DiGraph:
-    pts: ttuple[ParseTree] = tuple(ptt.instantiate())
+    pts: ttuple[ParseTree] = tuple(sorted(ptt.instantiate(), key=lambda tree: tree.to_bytes()))
     pt_diffs: dict[tuple[ParseTree, ParseTree], frozenset[StringTree]] = {
         (pt1, pt2): pt1.difference(pt2)
         for pt1, pt2 in tqdm.tqdm(
@@ -649,7 +656,7 @@ def run(
     g: DiGraph[BasicBlock] = DiGraph(
         itertools.chain(
             *(
-                tr.edge_map()
+                sorted(tr.edge_map(), key=lambda e: (e[0].start,e[0].end,e[1].start,e[1].end))
                 for tr in tqdm.tqdm(
                     traces.values(),
                     desc="building graph",
@@ -700,7 +707,7 @@ def run(
     ):
         g.add_edges_from(
             (*e, {"color": color_from_label(rule), "xlabel": rule})
-            for e in unique_edges
+            for e in sorted(unique_edges, key=lambda e: (e[0].start,e[0].end,e[1].start,e[1].end))
         )
 
     bbs: ttuple[BasicBlock] = tuple(g.nodes())

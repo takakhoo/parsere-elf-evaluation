@@ -54,6 +54,7 @@ static int walk_section_headers(Elf *e, size_t shstrndx) {
             Elf_Data *data = elf_getdata(scn, NULL);
             if (data == NULL) continue;
 
+            if (shdr.sh_entsize == 0 || shdr.sh_size % shdr.sh_entsize != 0) return 1;
             size_t nsyms = shdr.sh_size / shdr.sh_entsize;
             for (size_t i = 0; i < nsyms; i++) {
                 GElf_Sym sym;
@@ -76,7 +77,12 @@ int main(void) {
     ssize_t n;
     while ((n = read(0, buf + total, sizeof(buf) - total)) > 0) {
         total += (size_t)n;
-        if (total == sizeof(buf)) break;
+        if (total == sizeof(buf)) {
+            unsigned char extra;
+            ssize_t more = read(0, &extra, 1);
+            if (more != 0) DIE("input exceeds fixed buffer or read failed");
+            break;
+        }
     }
     if (n < 0) DIE("read failed");
     if (total == 0) DIE("empty input");
